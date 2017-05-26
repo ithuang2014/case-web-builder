@@ -1,0 +1,14 @@
+{
+	"name": "web_form_builder",
+	"main": "index.html",
+	"single-instance": true,
+	"window": {
+		"frame": false,
+		"title": "Web Form Builder",
+		"width": 1200,
+		"height": 650
+	},
+	"dependencies": {
+		"mssql": "^3.3.0"
+	}
+}

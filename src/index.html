@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>Web Form Builder</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+	<link rel="stylesheet" type="text/css" href="./lib/font-awesome/css/font-awesome.css">
+	<link rel="stylesheet" type="text/css" href="./lib/jquery-ui/jquery-ui.css">
+	<link rel="stylesheet" type="text/css" href="./bootstrap/css/bootstrap.css">
+	<link rel="stylesheet" type="text/css" href="./style.css">
+
+	<script type="text/javascript" src="./lib/jquery/jquery-3.2.0.js"></script>
+	<script type="text/javascript" src="./lib/jquery-ui/jquery-ui.js"></script>
+	<script type="text/javascript" src="./lib/kojs/knockout.debug.js"></script>
+	<script type="text/javascript" src="./bootstrap/js/bootstrap.js"></script>
+</head>
+<body>
+	<div class="titlebar">
+	</div>
+	<hr>
+	<div class="wfb-panel">
+	</div>
+	<div class="wfb-alert"></div>
+<!-- 	<script type="text/javascript">
+		nw.Window.get().evalNWBin(null, './lib/wfb-main/service.bin');
+		nw.Window.get().evalNWBin(null, './lib/wfb-main/templates.bin');
+		nw.Window.get().evalNWBin(null, './lib/wfb-main/viewmodel.bin');
+		nw.Window.get().evalNWBin(null, './lib/wfb-main/main.bin');
+	</script> -->
+	<script type="text/javascript" src="./lib/wfb-main/service.js"></script>
+	<script type="text/javascript" src="./lib/wfb-main/templates.js"></script>
+	<script type="text/javascript" src="./lib/wfb-main/viewmodel.js"></script>
+	<script type="text/javascript" src="./lib/wfb-main/main.js"></script>
+	<script type="text/javascript">
+		wfbuilder.go_startup();
+	</script>
+</body>
+</html>
