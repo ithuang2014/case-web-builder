@@ -3,25 +3,56 @@ var gui = require("nw.gui");
 function title_handler() {
 	var self = this;
 
-/* current_state: 'ws' then shows all button on title bar
-				  'st' then shows only App Logo button without dropdown */
+	/* current_state: 'ws' then shows all button on title bar
+					  'st' then shows only App Logo button without dropdown */
 	self.current_state = ko.computed(function() {
 		return cv_h.opened_files().length > 0 ? 'ws' : 'st';
 	});
 	self.current_title = ko.observable("");
 
+	self.show_options_modal = function() {
+		wfbuilder.show_options_modal();
+	}
 	self.exit = function() {
-		window.close();
+		var closeWindow = function() {
+			dbService.disconnect_db();
+			window.close();			
+		}
+
+		if (cv_h.opened_files().length > 0) {
+			var changes = false;
+			for (i = 0 ; i < cv_h.opened_files().length ; i ++) {
+				var cp = cv_h.opened_files()[i].crsaPage();
+				if (cp.changed) changes = true;
+			}
+
+			if (changes) {
+				showAlert("One or more pages have unsaved changes. Are you sure you want to quit the app?", "Unsaved Changes", "Don't quit", "Quit", null, function() {
+					closeWindow();
+				});
+				return;
+			}
+		}
+		closeWindow();
 	}
 	self.minimize = function() {
 		gui.Window.get().minimize();
+	}
+	self.save = function() {
+		wfbuilder.save_current_page();
+	}
+	self.save_as = function() {
+		wfbuilder.save_as_current_page();
+	}
+	self.close = function() {
+		wfbuilder.close_current_page();
 	}
 }
 
 function startup_handler() {
 	var self = this;
 	
-/* db setting variables are defined below */
+	/* db setting variables are defined below */
 
 	self.s_url = ko.observable('');
 	self.port = ko.observable('1433');
@@ -44,7 +75,7 @@ function startup_handler() {
 			}
 
 			/* if already connected, discard this operation */
-			if (service.is_connected())
+			if (dbService.is_connected())
 				return;
 
 			/* set connected to 'false' because Toggle button must be toggled
@@ -59,10 +90,10 @@ function startup_handler() {
 				port: self.port()
 			};
 
-			service.connect_db(config, function() {
+			dbService.connect_db(config, function() {
 				self.connected(true);
 
-				service.get_wfCls(function(recordset) {
+				dbService.get_wfCls(function(recordset) {
 					self.wfClsDisplayName(recordset);
 				});
 			}, function() {
@@ -72,15 +103,15 @@ function startup_handler() {
 		else {
 			self.idWfClass("-1");
 			self.wfClsDisplayName([]);
-			if (service.is_connected())
-				service.disconnect_db();
+			if (dbService.is_connected())
+				dbService.disconnect_db();
 		}
 	});
 
 	/* saves the credential: this operation is valid after db connection is succeed */
 	self.rem_me.subscribe(function(value) {
 		if (value) {
-			service.save_db_credential();
+			dbService.save_db_credential();
 		}
 	});
 
@@ -92,7 +123,7 @@ function startup_handler() {
 	/* defines a callback function for 'show.bs.dropdown' of db setting dropdown panel 
 	self.db_setting_show = function() {
 		console.log("asdfasdf");
-//		$("a.db-setting.dropdown-toggle").dropdown("toggle");
+		// $("a.db-setting.dropdown-toggle").dropdown("toggle");
 	}
 	$("div.setting-bar.dropdown").on('show.bs.dropdown', function() {
 		console.log("asdfasdf");
@@ -108,7 +139,7 @@ function startup_handler() {
 			return;
 		}
 
-		service.save_idWfClass(self.idWfClass());
+		dbService.save_idWfClass(self.idWfClass());
 	}
 
 	self.show_options_modal = function() {
@@ -116,7 +147,7 @@ function startup_handler() {
 	}
 
 	self.retrieve_db_credential = function() {
-		var cre = service.get_db_credential();
+		var cre = dbService.get_db_credential();
 		
 		if (!cre)
 			return;
@@ -128,9 +159,9 @@ function startup_handler() {
 		self.pwd(cre.password);
 	}
 
-/* below functions are for the 4 buttons on startup */
+	/* below functions are for the 4 buttons on startup */
 	self.create_new_page = function() {
-		wfbuilder.create_new_page(true);
+		wfbuilder.create_new_page();
 	};
 	self.edit_existing = function() {
 
@@ -176,8 +207,8 @@ function ab_handler() {
 
 	self.expand = function(id, data, event) {
 		var tar = $(event.target);
-		var par = tar.parent();
-		
+		var par = tar.parent().parent();
+
 		tar.toggleClass(self.openedClass + " " + self.closedClass);
 		
 		/* if the columns of clicked table are already inserted into 't_c_list', then only
@@ -190,7 +221,7 @@ function ab_handler() {
 		/* initalize childlist of clicked table */
 		self.t_c_list()[id].childlist = [];
 
-		service.get_columns(self.t_c_list()[id], function(recordset) {
+		dbService.get_columns(self.t_c_list()[id], function(recordset) {
 			/* get columns of clicked table and stores them into 't_c_list'
 			    also stores the their indices into childlist */
 			for (i = 0 ; i < recordset.length ; i ++) {
@@ -199,13 +230,16 @@ function ab_handler() {
 			}
 			
 			var html = "<ul data-bind=\"foreach: t_c_list()[" + id + "].childlist\">\
-							<li data-bind=\"css: $root.t_c_list()[$data].attribAttributeType == 1 ? 'branch': ''\">\
-								<!-- ko if: $root.t_c_list()[$data].attribAttributeType == 1 -->\
-									<i class=\"indicator glyphicon\" data-bind=\"css: $root.closedClass, click: function(data, event) { $root.expand($data, data, event)}\"></i>\
-								<!-- /ko -->\
+							<li data-bind=\"css: $root.t_c_list()[$data].attribAttributeType == 1 ? 'branch': ''\
+											,attr: {\'data-record\':$data}\">\
 								<span>\
-									<span class=\"fa\" data-bind=\"css: $root.t_c_list()[$data].attribAttributeType == 1 ? $root.attrib_icons[$root.t_c_list()[$data].entType - $root.t_c_list()[$data].attribAttributeType] : $root.attrib_icons[$root.t_c_list()[$data].attribAttributeType]\"></span>\
-									<span data-bind=\"text: $root.t_c_list()[$data].attribName\"></span>\
+									<!-- ko if: $root.t_c_list()[$data].attribAttributeType == 1 -->\
+										<i class=\"indicator glyphicon\" data-bind=\"css: $root.closedClass, click: function(data, event) { $root.expand($data, data, event)}\"></i>\
+									<!-- /ko -->\
+									<span class=\"db-control\">\
+										<span class=\"fa\" data-bind=\"css: $root.t_c_list()[$data].attribAttributeType == 1 ? $root.attrib_icons[$root.t_c_list()[$data].entType - $root.t_c_list()[$data].attribAttributeType] : $root.attrib_icons[$root.t_c_list()[$data].attribAttributeType]\"></span>\
+										<span data-bind=\"text: $root.t_c_list()[$data].attribName\"></span>\
+									</span>\
 								</span>\
 							</li>\
 						</ul>";
@@ -221,7 +255,7 @@ var ab_h = new ab_handler();
 function canvas_handler() {
 	var self = this;
 
-/* an array of Opend files: html, login, case files
+	/* an array of Opend files: html, login, case files
 		cv_h.opened_files.push({
 			name: "untitled.html",
 			active: ko.observable(true),
@@ -232,7 +266,7 @@ function canvas_handler() {
 				css_en: ko.observable(true)
 			}
 		});*/
-	self.opened_files = ko.observableArray([]);
+	self.opened_files = ko.observableArray([]).extend({rateLimit: {method: 'notifyWhenChangesStop'}});
 	self.active_file = ko.observable();
 
 	self.scr_menu = [
@@ -248,9 +282,15 @@ function canvas_handler() {
 		self.opened_files()[self.active_file()].state.width(new_size);
 	};
 
+	self.refresh = function() {
+        crsaQuickMessage("Refreshing page...", 1000);
+		wfbuilder.refresh_current_page();
+	}
 	self.close = function() {
-		self.opened_files.splice(self.active_file(), 1);
 		wfbuilder.close_current_page();
+	}
+	self.save = function() {
+		wfbuilder.save_current_page();
 	}
 
 	self.do_test_mode = function() {

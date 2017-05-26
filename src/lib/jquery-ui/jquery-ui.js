@@ -9580,7 +9580,6 @@ $.widget( "ui.draggable", $.ui.mouse, {
 		stop: null
 	},
 	_create: function() {
-
 		if ( this.options.helper === "original" ) {
 			this._setPositionRelative();
 		}
@@ -16247,7 +16246,6 @@ var widgetsSortable = $.widget( "ui.sortable", $.ui.mouse, {
 	},
 
 	_createHelper: function( event ) {
-
 		var o = this.options,
 			helper = $.isFunction( o.helper ) ?
 				$( o.helper.apply( this.element[ 0 ], [ event, this.currentItem ] ) ) :

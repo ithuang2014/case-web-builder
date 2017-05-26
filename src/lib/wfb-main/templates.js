@@ -11,13 +11,14 @@ var html_temp = {
 					<li>Edit login page</li>\
 					<li>Edit case page</li>\
 					<li class=\"divider\"></li>\
-					<li>Save page</li>\
+					<li data-bind=\"event: {click: save}\">Save page</li>\
+					<li data-bind=\"event: {click: save_as}\">Save as</li>\
 					<li>Duplicate</li>\
 					<li class=\"divider\"></li>\
-					<li>Close</li>\
+					<li data-bind=\"event: {click: close}\">Close</li>\
 					<li class=\"divider\"></li>\
 					<li>Database settings</li>\
-					<li>Options</li>\
+					<li data-bind=\"event: {click: show_options_modal}\">Options</li>\
 					<li class=\"divider\"></li>\
 					<li>Publish pages to a folder</li>\
 					<li class=\"divider\"></li>\
@@ -28,7 +29,7 @@ var html_temp = {
 		<!-- ko if: current_state()==\"ws\" -->\
 			<div class=\"titlebar-divider\"></div>\
 			<div class=\"pg-concerned\">\
-				<i class=\"fa fa-floppy-o\"></i>\
+				<i class=\"fa fa-floppy-o\" data-bind=\"event: {click: save}\"></i>\
 				<i class=\"fa fa-file-text-o\"></i>\
 				<i class=\"fa fa-folder-open-o\"></i>\
 			</div>\
@@ -96,7 +97,8 @@ var html_temp = {
 						</div>\
 					</li>\
 					<li class=\"divider\"></li>" + 
-/*					<li class=\"input-group-sm\">\
+					/*
+					<li class=\"input-group-sm\">\
 						<select class=\"form-control\" id=\"catalog\">\
 							<option disabled selected>Select Catalog</option>\
 						</select>\
@@ -133,10 +135,14 @@ var html_temp = {
 				<li class=\"col-xs-6\"><a data-toggle=\"tab\" href=\"#bootstrap_\">Bootstrap</a></li>\
 			</ul>\
 			<div class=\"tab-content\">\
-				<div id=\"app_\" class=\"tab-pane fade in active\">\
-					<div class=\"no-db-controls\" data-bind=\"if: t_c_list().length == 0\">No db connections!</div>\
+				<div id=\"app_\" class=\"tab-pane active\">\
+					<div class=\"no-db-controls\" data-bind=\"if: t_c_list().length == 0\">No db connection!</div>\
 				</div>\
-				<div id=\"bootstrap_\" class=\"tab-pane fade\">\
+				<div id=\"bootstrap_\" class=\"tab-pane\">\
+					<div id=\"crsa-elements\" class=\"crsa-panel crsa-search-panel\">\
+						<div class=\"header\"></div>\
+						<div class=\"content\"></div>\
+					</div>\
 				</div>\
 			</div>\
 		</div>",
@@ -147,9 +153,11 @@ var html_temp = {
 				<li class=\"col-xs-6\"><a data-toggle=\"tab\" href=\"#css_\">CSS</a></li>\
 			</ul>\
 			<div class=\"tab-content\">\
-				<div id=\"prop_\" class=\"tab-pane fade in active\">\
+				<div id=\"prop_\" class=\"tab-pane active\">\
 				</div>\
-				<div id=\"css_\" class=\"tab-pane fade\">\
+				<div id=\"css_\" class=\"tab-pane\">\
+					<div id=\"crsa-rules\" class=\"crsa-panel\">\
+					</div>\
 				</div>\
 			</div>\
 		</div>",
@@ -160,15 +168,16 @@ var html_temp = {
 			<div class=\"cv-pages\" data-bind=\"foreach: opened_files\">\
 				<div class=\"page\" data-bind=\"css: $data.active?'active':''\">\
 					<span class=\"pg-name\" data-bind=\"text: $data.name\"></span>\
+					<span class=\"page-change-icon\" data-bind=\"if: $data.state.changed()\">*</span>\
 					<div class=\"pg-menu dropdown\">\
 						<a href=\"#\" class=\"pg-setting dropdown-toggle\" data-toggle=\"dropdown\">\
 							<span class=\"fa fa-chevron-circle-down\"></span>\
 						</a>\
 						<ul class=\"dropdown-menu\">\
-							<li>Save</li>\
+							<li data-bind=\"event: {click: $root.save}\">Save</li>\
 							<li>Duplicate this page</li>\
-							<li>Refresh</li>\
-							<li>Close</li>\
+							<li data-bind=\"event: {click: $root.refresh}\">Refresh</li>\
+							<li data-bind=\"event: {click: $root.close}\">Close</li>\
 							<li>Manage properties</li>\
 							<li>Edit code</li>\
 						</ul>\
@@ -206,12 +215,29 @@ var html_temp = {
 							<span class=\"fa fa-times\"></span>\
 						</a>\
 					</div>\
+					<div class=\"content content-size-tablet-landscape\">\
+						<iframe class=\"content-iframe\" frameborder=\"0\"></iframe>\
+					</div>\
 				</div>\
 			</div>\
 		</div>"
 }
 
 var comp_modals = {
+	alert:
+		"<div class=\"modal fade wfb-modal\" role=\"dialog\">\
+			<div class=\"modal-dialog modal-lg\">\
+			  <div class=\"modal-content\">\
+			    <div class=\"modal-header\">\
+			      <button type=\"button\" class=\"close\" data-dismiss=\"modal\">&times;</button>\
+			    </div>\
+			    <div class=\"modal-body\">\
+			    </div>\
+			    <div class=\"modal-footer\">\
+			    </div>\
+			  </div>\
+			</div>\
+		</div>",
 	options:
 		"<div class=\"modal fade options\" role=\"dialog\">\
 			<div class=\"modal-dialog modal-lg\">\

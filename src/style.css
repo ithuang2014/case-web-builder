@@ -7,7 +7,6 @@ body {
 	height: calc(100% - 36px);
 	width: 100%;
 	position: absolute;
-	z-index: 10000;
 }
 
 /*	===================================
@@ -251,12 +250,13 @@ body {
 	    margin-left: 25px;
 	}
 
+
 /*	===================================
 			ab panel 				
 	===================================	*/
 
 	.wfb-comp {
-		width: 270px;
+		width: 280px;
 		height: calc(100% - 12px);
 		position: absolute;
 		border: 1px solid #a0a0a0;
@@ -269,7 +269,7 @@ body {
 		background-color: #dcdcdc;
 		overflow-y: auto;
 		overflow-x: auto;
-		white-space: nowrap;
+		/* white-space: nowrap; */
 		/* position: absolute; */
 	}
 	
@@ -334,6 +334,7 @@ body {
 	    position: absolute;
 	}
 
+
 /*	===================================
 			pc panel 				
 	===================================	*/
@@ -352,16 +353,18 @@ body {
 
 	.canvas {
 		position: relative;
-		margin: 10px 280px 2px 280px;
+		margin: 10px 290px 2px 290px;
 		height: calc(100% - 12px);
 	}
 
 	.cv-pages {
 		height: 100%;
+		position: relative;
 	}
 
 	.cv-pages > .page {
 		display: none;
+		position: relative;
 		height: 100%;
 		width: 100%;
 		padding: 5px;
@@ -371,7 +374,9 @@ body {
 	.cv-pages > .page.active {
 		display: block;
 	}
-
+	.page span.page-change-icon {
+	    font-size: 18px;
+	}
 	.page > div {
 		display: inline-block;
 	}
@@ -428,9 +433,117 @@ body {
 		color: #8e8e8e;
 	}
 
+	.page > .content {
+	    position: relative;
+	    width: 100%;
+	    height: calc(100% - 29px);
+	    margin-top: 5px;
+	}
+	
+	.iframe-loading-overlay {
+	  position: absolute;
+	  left: 0;
+	  top: 0;
+	  right: 0;
+	  bottom: 0;
+	  background-color: rgba(255, 255, 255, 0.9);
+	}
+	.iframe-loading-overlay div {
+	  color: #a5a5a5;
+	  margin-top: 150px;
+	  text-align: center;
+	  font-size: 18px;
+	}
+	.iframe-loading-overlay div i {
+	  color: inherit;
+	  display: block;
+	  font-size: 30px;
+	  margin-bottom: 10px;
+	}
+	.iframe-loading-overlay div a {
+	  display: block;
+	  margin-top: 12px;
+	  color: #b4b4b4;
+	  text-decoration: underline;
+	  font-size: 85%;
+	}
+	.iframe-loading-overlay div a:hover {
+	  color: #969696;
+	}
+
+	iframe.content-iframe {
+		width: 100%;
+		height: 100%;
+	}
+
+	div.crsa-hl-overlay {
+	  position: absolute;
+	  pointer-events: none;
+	}
+	div.crsa-hl-size {
+	  border: 1px solid rgba(0, 255, 0, 0.65);
+	}
+	div.crsa-hl-size.dyn {
+	  border: 1px solid rgba(255, 195, 0, 0.65);
+	}
+	div.crsa-hl-padding-top,
+	div.crsa-hl-padding-bottom,
+	div.crsa-hl-padding-left,
+	div.crsa-hl-padding-right {
+	  background-color: rgba(0, 255, 0, 0.07);
+	}
+	div.crsa-hl-margin-top,
+	div.crsa-hl-margin-bottom,
+	div.crsa-hl-margin-left,
+	div.crsa-hl-margin-right {
+	  background-color: rgba(30, 30, 30, 0.07);
+	}
+	div.crsa-hl-name {
+	  background-color: rgba(197, 197, 197, 0.67);
+	  height: 16px;
+	  overflow: hidden;
+	  font-size: 13px;
+	  line-height: 1;
+	  color: #4d4d4d;
+	  padding: 1px 4px;
+	  text-transform: lowercase;
+	  max-width: 200px;
+	  text-overflow: ellipsis;
+	  white-space: nowrap;
+	}
+
+	div.inline-menu {
+	  position: absolute;
+	  width: 160px;
+	  height: 24px;
+	}
+	div.crsa-inline-menu {
+	  position: absolute;
+	  width: 160px;
+	  height: 24px;
+	  background-color: #4497cb;
+	  box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+	  padding: 2px 0 0 5px
+	;
+	}
+	div.crsa-inline-menu .btn-link {
+	  color: #fff;
+	}
+	div.crsa-inline-menu i {
+	  cursor: pointer;
+	  margin-right: 8px;
+	}
+	div.crsa-inline-menu i.crsa-inline-menu-move {
+	  cursor: move;
+	  position: absolute;
+	  right: 0;
+	  top: 5px;
+	}
+
 /*	===================================
 			db controls tree view 				
 	===================================	*/
+	
 	.tree, .tree ul {
 	    margin:0;
 	    padding:0;
@@ -511,36 +624,28 @@ body {
 	    color: #58bee6;
 	}
 
-	.tree li > span:hover {
+	.tree span.db-control:hover {
 	    background-color: #5dbbe8;
 	    cursor: pointer;
 	}
 
-	.tree li > span {
+	.tree span.db-control {
 	    padding: 1px 3px;
 	}
 
+	li > span {
+	    display: inline;
+	    white-space: nowrap;
+	}
+
+	span.db-control > span:nth-last-of-type(1) {
+	    margin-right: 5px;
+	}
+
+	
 /*	===================================
 			modal dialog 				
 	===================================	*/
-	.modal-header {
-	    padding-top: 5px;
-	    padding-bottom: 5px;
-	    font-weight: 700;
-	    font-size: 18px;
-	    font-family: monospace;
-	    /* background-color: #ffffff; */
-	}
-
-	.modal-footer {
-	    padding-top: 5px;
-	    padding-bottom: 5px;
-	}
-
-	.modal-body {
-	    max-height: 600px;
-	    overflow-y: auto;
-	}
 
 
 /*	===================================
