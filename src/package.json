@@ -6,7 +6,9 @@
 		"frame": false,
 		"title": "Web Form Builder",
 		"width": 1200,
-		"height": 650
+		"height": 650,
+		"min_width": 900,
+		"min_height": 500
 	},
 	"dependencies": {
 		"mssql": "^3.3.0"
