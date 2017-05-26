@@ -1,4 +1,10 @@
-# case-web-builder
+case-web-builder - Johnny & his fellows
+
+# About CASE Web Builder
+There are lots of web design tool to build a responsive websites with Bootstrap framework, such as Pinegrow and Bootstrap Studio. However, the tools are just offering a user interface to drag out the HTML controls and build a web page without cooperating with any database table.
+As such, the goal of this project is to build a web design tool which is working with a database. The web design tool should use NW.JS to develop.
+
+# Milestones
 ## milestone#1 (2017-03-15)
 - SRS document
 ## milestone#2 (2017-04-07)
