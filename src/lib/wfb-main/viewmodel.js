@@ -28,6 +28,7 @@ function title_handler() {
 
 			if (changes) {
 				showAlert("One or more pages have unsaved changes. Are you sure you want to quit the app?", "Unsaved Changes", "Don't quit", "Quit", null, function() {
+					wfbuilder.closeCodeEditor();
 					closeWindow();
 				});
 				return;
@@ -46,6 +47,21 @@ function title_handler() {
 	}
 	self.close = function() {
 		wfbuilder.close_current_page();
+	}
+	self.create_new_page = function() {
+		wfbuilder.create_new_page();
+	}
+	self.edit_existing = function() {
+		wfbuilder.open_existing_page();
+	}
+	self.duplicate_page = function() {
+		wfbuilder.duplicate_current_page();
+	}
+	self.undo = function() {
+		wfbuilder.undo();
+	}
+	self.redo = function() {
+		wfbuilder.redo();
 	}
 }
 
@@ -90,6 +106,7 @@ function startup_handler() {
 				port: self.port()
 			};
 
+			debugger;
 			dbService.connect_db(config, function() {
 				self.connected(true);
 
@@ -110,6 +127,7 @@ function startup_handler() {
 
 	/* saves the credential: this operation is valid after db connection is succeed */
 	self.rem_me.subscribe(function(value) {
+		debugger;
 		if (value) {
 			dbService.save_db_credential();
 		}
@@ -164,7 +182,7 @@ function startup_handler() {
 		wfbuilder.create_new_page();
 	};
 	self.edit_existing = function() {
-
+		wfbuilder.open_existing_page();
 	};
 	self.edit_login = function() {
 
@@ -267,7 +285,50 @@ function canvas_handler() {
 			}
 		});*/
 	self.opened_files = ko.observableArray([]).extend({rateLimit: {method: 'notifyWhenChangesStop'}});
-	self.active_file = ko.observable();
+	self.active_file = ko.observable(-1);
+
+	self.active_file.subscribe(function(value) {
+		if (value < 0) {
+			tt_h.current_title("");
+		} else {
+			tt_h.current_title(self.opened_files()[value].name() + " - ");
+		}
+	});
+
+	self.setSelectedPage = function(page) {
+		if (self.active_file() > -1)
+			self.opened_files()[self.active_file()].active(false);
+		page.active(true);
+
+		for (var i = 0 ; i < self.opened_files().length ; i ++) {
+			var kopage = self.opened_files()[i];
+			if (kopage === page) {
+				self.active_file(i);
+				break;
+			}
+		}
+	}
+
+	self.selectPage = function(pageId, data, event) {
+		var kopage = self.opened_files()[pageId()];
+
+		if (event.ctrlKey) {
+			var visible = kopage.visible();
+			kopage.visible(!visible);
+		} else {
+			for (var i = 0 ; i < self.opened_files().length; i ++) {
+				tmp = self.opened_files()[i];
+				if (pageId() == i) {
+					tmp.visible(true);
+					continue;
+				}
+				tmp.visible(false);
+			}
+		}
+
+		wfbuilder.setSelectedPage(kopage.crsaPage().$iframe);
+		methods.refresh();
+	}
 
 	self.scr_menu = [
 		{content: "workstation / 1920px", abbr: "1920px", value: 1920},
@@ -280,6 +341,15 @@ function canvas_handler() {
 
 	self.set_scrsize = function(new_size) {
 		self.opened_files()[self.active_file()].state.width(new_size);
+
+        if(new_size > 5000) new_size = 5000;
+
+		var cp = cv_h.opened_files()[cv_h.active_file()].crsaPage();
+		cp.deviceWidth = new_size;
+
+        methods.refresh();
+        crsaQuickMessage("Page size is set to " + new_size + "px");
+        $('body').trigger('crsa-window-changed', cp);
 	};
 
 	self.refresh = function() {
@@ -291,6 +361,12 @@ function canvas_handler() {
 	}
 	self.save = function() {
 		wfbuilder.save_current_page();
+	}
+	self.duplicate_page = function() {
+		wfbuilder.duplicate_current_page();
+	}
+	self.edit_code = function() {
+		wfbuilder.toggleEditCode();
 	}
 
 	self.do_test_mode = function() {
@@ -308,3 +384,142 @@ function canvas_handler() {
 }
 var cv_h = new canvas_handler();
 var tt_h = new title_handler();
+
+function statusBar_handler() {
+	var self = this;
+
+	self.elList = ko.observableArray([{}]);
+	self.cur_id = ko.observable(null);
+	self.max_width = ko.observable(100);
+
+	self.update = function(pgId) {
+		if (!pgId) {
+			self.elList([]);
+			self.cur_id(null);
+			return;
+		}
+		
+		var isIn = false;
+		for (var i = 0 ; i < self.elList().length ; i ++) {
+			var sb_el = self.elList()[i];
+			if (sb_el.pgId == pgId) {
+				isIn = true;
+				self.cur_id(i);
+				break;
+			}
+		}
+		if (isIn) return;
+
+		self.elList([]);
+		var pgel = getPgNodeByPgId(pgId);
+		do {
+			var par = {};
+			par.pgId = pgel.pgId;
+			par.name = getElementName(pgel.get$DOMElement(), null, false, true, false, true);
+
+			self.elList.unshift(par);
+
+			pgel = pgel.parent;
+		} while(pgel.closingTag != "html");
+
+		self.cur_id(self.elList().length - 1);
+
+		var bar = $(".status-bar");
+		self.max_width(Math.floor( (bar.width() - 6) / self.elList().length));
+	}
+
+	self.select = function(id) {
+		var pgId = self.elList()[id()].pgId;
+		var $el = getPgNodeByPgId(pgId).get$DOMElement();
+		wfbuilder.selectElement($el);
+	}
+
+	self.hover = function(id) {
+		var pgId = self.elList()[id()].pgId;
+		var $el = getPgNodeByPgId(pgId).get$DOMElement();
+		wfbuilder.highlightElement($el);
+	}
+}
+var sb_h = new statusBar_handler();
+
+function om_handler() {
+	var self = this;
+
+	self.tb_name = "";
+	self.added_cols = ko.observableArray([]);
+	self.child_cols = ko.observableArray([]);
+	self.cur_col = ko.observable(-1);
+
+	self.addCol = function() {
+		if (self.cur_col() == -1)
+			return;
+		self.added_cols.push({id: self.cur_col(), origin: false});
+		self.child_cols()[self.cur_col()].added(true);
+
+		self.cur_col(-1);
+	}
+
+	self.onCancel = function(id) {
+		self.child_cols()[self.added_cols()[id()].id].added(false);
+		self.added_cols.splice(id(), 1);
+	}
+}
+
+function oo_handler(parID) {
+	var self = this;
+
+	self.tb_name = "";
+	self.added_cols = ko.observableArray([]);
+	self.child_cols = ko.observableArray([]);
+	self.cur_col = ko.observable(-1);
+	self.conflicts = ko.observable(0);
+
+	var par_rec = ab_h.t_c_list()[parID];
+
+	var update_conflicts = function() {
+		var columns = [];
+		for (var i in self.added_cols()) {
+			var rec = self.child_cols()[self.added_cols()[i].id];
+			columns.push(rec.attribName);
+		}
+		if (columns.length == 0) {
+			self.conflicts(0);
+			return;
+		}
+		dbService.get_valueList(par_rec.idEnt, columns, function(record) {
+			var tmp = [];
+			for (var i = 0 ; i < record.length ; i ++) {
+				for (var j = 0 ; j < tmp.length; j ++) {
+					var same = true;
+					for (key in record[i]) {
+						if (record[i][key] != tmp[j][key]) same = false;
+					}
+					if (same) break;
+				}
+				if (j == tmp.length) {
+					tmp.push(record[i]);
+				}
+			}
+			self.conflicts(record.length - tmp.length);
+			console.log(self.conflicts());
+		});
+	}
+
+	self.addCol = function() {
+		if (self.cur_col() == -1)
+			return;
+		self.added_cols.push({id: self.cur_col(), origin: false});
+		self.child_cols()[self.cur_col()].added(true);
+
+		self.cur_col(-1);
+
+		update_conflicts();
+	}
+
+	self.onCancel = function(id) {
+		self.child_cols()[self.added_cols()[id()].id].added(false);
+		self.added_cols.splice(id(), 1);
+
+		update_conflicts();
+	}
+}

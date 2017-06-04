@@ -2435,13 +2435,8 @@ function setRuleInfo(i) {
     var less_tree = null;
     var crsa_rules = [];
 
-    //////////////////////////////////////////////////////
-    //sws//
     //var less_parser  = new(less.Parser);
-
-    //sws//
-    //////////////////////////////////////////////////////
-
+  
 
     var less_variables = {};
     var less_variables_string = '';
@@ -2502,6 +2497,7 @@ function setRuleInfo(i) {
                 oldps.destroy();
             }
             var ps = new CrsaPageStyles(iframe);
+
             $iframe.data('crsa-page-styles', ps);
 
             ps.loadAllStylesheets(function() {
@@ -3079,7 +3075,7 @@ function setRuleInfo(i) {
                                     return;
                                 } else {
 
-                                    getCrsaPageForIframe(wfbuilder.getSelectedPage()).undoStack.add("Add variable " + val, false, cs);
+                                    //sws//block:getCrsaPageForIframe(wfbuilder.getSelectedPage().$iframe).undoStack.add("Add variable " + val, false, cs);
                                     var type = cs.genGetType();
                                     crsaVariables.add(val, '', cs);
                                     cs.genForgetCachedSource();
@@ -3159,7 +3155,7 @@ function setRuleInfo(i) {
                         var fdef = {type: 'color', name: v.name, file_picker: true, file_picker_quotes: true};
                         var values = {};
                         values[v.name] = v.value;
-                        var $fc = $.fn.crsa('addInputField', $c, {type: 'stylesheet', data: cs}, v.name, fdef, values, true).data('crsa-var', v);
+                        var $fc = wfbuilder.addInputField($c, {type: 'stylesheet', data: cs}, v.name, fdef, values, true).data('crsa-var', v);
 
                         var $del = $('<a/>', {href: '#', class: 'crsa-remove-var'}).html('<i class="fa fa-trash-o" />').on('click', function(e) {
                             var $field = $input.closest('.crsa-field');
@@ -3168,7 +3164,7 @@ function setRuleInfo(i) {
                                 showAlert("Variable " + v.name + " is used in one or more open stylesheets.", "Can't remove it");
                             } else {
 
-                                getCrsaPageForIframe(wfbuilder.getSelectedPage()).undoStack.add("Remove variable " + v.name, false, cs);
+                                //sws//block: getCrsaPageForIframe(wfbuilder.getSelectedPage().$iframe).undoStack.add("Remove variable " + v.name, false, cs);
 
                                 crsaVariables.remove(v, function() {
                                     updateList();
@@ -3190,7 +3186,7 @@ function setRuleInfo(i) {
 
                                 if(!undo_recorded || undo_recorded != v) {
 
-                                    getCrsaPageForIframe(wfbuilder.getSelectedPage()).undoStack.add("Change " + v.name, false, cs);
+                                    //sws//block: getCrsaPageForIframe(wfbuilder.getSelectedPage()).undoStack.add("Change " + v.name, false, cs);
                                     //console.log('undo recorded');
                                     undo_recorded = v;
                                 }
@@ -3810,7 +3806,9 @@ function setRuleInfo(i) {
 
         var cs = rule.crsa_stylesheet;
 
-        getCrsaPageForIframe(wfbuilder.getSelectedPage()).undoStack.add("Edit CSS rule", false, cs);
+
+        
+        // getCrsaPageForIframe(wfbuilder.getSelectedPage()).undoStack.add("Edit CSS rule", false, cs);
 
         var code_has_errors = false;
 
@@ -4109,32 +4107,24 @@ function setRuleInfo(i) {
 
         }
 
-        //////////////////////////////////////////////////////
-        //sws//
-        //this.setSelectedPage(wfbuilder.getSelectedPage(), true);
-        //this.setSelectedPage(wfbuilder.getSelectedPage(), true);
-        //sws//
-        //////////////////////////////////////////////////////
 
+        //this.setSelectedPage(wfbuilder.getSelectedPage(), true);
+        //this.setSelectedPage(wfbuilder.getSelectedPage(), true);
+       
 
         var resizeRulesList = function() {
             var $sslist = $dest.find('.cm-sslist');
             var $list = $dest.find('.crsa-cm-list');
 
-            //sws//???
             if ($sslist.height()){
                 $list.css('top', ($sslist.height() + 140 + 15) + 'px');
             }else{
-                $("#css_").addClass("active");
-                $list.css('top', ($sslist.height() + 140 + 15) + 'px');
-                $("#css_").removeClass("active");
-
+                if ($("#css_").hasClass("active") != true) {
+                    $("#css_").addClass("active");
+                    $list.css('top', ($sslist.height() + 140 + 15) + 'px');
+                    $("#css_").removeClass("active");
+                }
             }
-            
-
-
-            
-
         }
 
         this.resizeRulesList = function() {
@@ -4389,7 +4379,7 @@ function setRuleInfo(i) {
             $psul.sortable('refresh');
         }
 
-        //sws//block:
+        
         // $('<a/>', {class: 'cm-sslist-manage', href:"#"}).html('+ Manage...').appendTo($rules_div).on('click', function(e) {
         //     $.fn.crsacss('showStylesheetsManager');
         //     e.preventDefault();
@@ -4406,7 +4396,7 @@ function setRuleInfo(i) {
                     if(cs) list.push(cs);
                 });
 
-                //sws//block:
+              
                 //getCrsaPageForIframe(wfbuilder.getSelectedPage().$iframe).undoStack.add("Reorder stylesheets");
                 
                 getCrsaPageStylesForPage(selectedPage).reorder(list, function() {
@@ -4447,7 +4437,7 @@ function setRuleInfo(i) {
         var $varBtn = $('<a/>', {href: '#', class: 'crsa-show-var'}).html('Vars').appendTo($css_var_contianer);
         $varBtn.on('click', function () {
             event.preventDefault();
-            // $('#crsa-vars-panel').data('panel').show();
+            $('#crsa-vars-panel').data('panel').show();
         });
 
         if(service.getSetting('use-less', '1') != '1') {
@@ -4569,7 +4559,8 @@ function setRuleInfo(i) {
         });
 
         $ul.get(0).addEventListener('click', function(event) {
-            debugger;//sws//temp:
+            debugger;
+
             //find('.crsa-cm-apply').on('click', function(event) {
             var stop = false;
             var $target = $(event.target);
@@ -4614,7 +4605,6 @@ function setRuleInfo(i) {
                 var $input = $li.find('input');
                 var sel = $.trim($input.val());
 
-                //sws//block:
                 //getCrsaPageForIframe(wfbuilder.getSelectedPage().$iframe).undoStack.add("Remove CSS rule", false, cs);
 
                 cs.removeLessRule(r);
@@ -4628,7 +4618,7 @@ function setRuleInfo(i) {
                 var $li = $target.closest('div');
                 var r = getRuleForDiv($li);
                 if(r.selector && !r.multiple_values) {
-                    //sws//
+                  
                     _this.editRule(r);
                 } else {
                     editRuleSource(r);
@@ -4701,10 +4691,10 @@ function setRuleInfo(i) {
             //.closest('.crsa-cm-edit');
 
             if($target.is('.crsa-cm-edit')) {
-                //sws//$.fn.crsa('highlightElement', null);
+              //$.fn.crsa('highlightElement', null);
                 wfbuilder.highlightElement(null);
 
-                //sws//
+               
                 wfbuilder.hidePreview();
 
 
@@ -4713,7 +4703,7 @@ function setRuleInfo(i) {
                 //event.stopPropagation();
             } else if($target.is('.crsa-cm-code')) {
 
-                //sws//
+             
                 wfbuilder.hidePreview();
             }
 
@@ -4731,11 +4721,11 @@ function setRuleInfo(i) {
                     var $pre = $('<pre/>').html(r.crsa_stylesheet.genGetSourceHtmlForRule(r)).appendTo($el);
                     $('<p>Click on <i class="fa fa-code"></i> to edit rule code.<br />Click on <span>.Selector</span> to edit rule properties.</p>').appendTo($el);
                     
-                    //sws// origial:
+                  // origial:
                     // $.fn.crsa('showPreview', $li, $el, 'cm-preview', function(w) {
                     //     return getPreviewPosition(w, $li.closest('#crsa-left-plane, .panel'));
                     // });
-                    //sws//
+                   
                     wfbuilder.showPreview($li, $el, 'cm-preview', function(w) {
                         return getPreviewPosition(w, $li.closest('.wfb-comp.pc-panel'));
                     });
@@ -4752,7 +4742,7 @@ function setRuleInfo(i) {
 
             if($target.is('.crsa-cm-code')) {
 
-                //sws//
+             
                 wfbuilder.hidePreview();
             }
 
@@ -4786,7 +4776,7 @@ function setRuleInfo(i) {
                 dragged_$el.css('opacity', 0.4).hide();
             }, 100);
 
-            //sws//
+           
             wfbuilder.hidePreview();
 
         }, true);
@@ -5256,13 +5246,13 @@ function setRuleInfo(i) {
                         $('<p>Click on <i class="fa fa-code"></i> to edit rule code.<br />Click on <span>.Selector</span> to edit rule properties.</p>').appendTo($el);
                     }
 
-                    //sws// original: $.fn.crsa('showPreview', $li, $el, 'cm-preview');
+                     // original: $.fn.crsa('showPreview', $li, $el, 'cm-preview');
                     wfbuilder.showPreview($li, $el, 'cm-preview');
 
                 })
                 .on('mouseout', function(e) {
 
-                    //sws//
+                   
                     wfbuilder.hidePreview();
                 });
 
@@ -5566,7 +5556,7 @@ function setRuleInfo(i) {
             //$dest.trigger('crsa-cm-edit', r);
             var rule_obj = getObjectFromRule(r);
 
-            //sws//!!!
+           
             wfbuilder.showProperties(rule_obj, $props_div);
 
 
@@ -5581,7 +5571,7 @@ function setRuleInfo(i) {
                 });
             }
 
-            //sws//original -300
+           //original -300
             $main_div.animate(
                 {left: -278}, 150, function() {
                 });
@@ -5683,7 +5673,6 @@ function setRuleInfo(i) {
                         }
 
 
-                        //sws//block:
                         //getCrsaPageForIframe(wfbuilder.getSelectedPage().$iframe).undoStack.add("Add CSS rule / " + r, false, cs);
 
                         
@@ -5759,7 +5748,6 @@ function setRuleInfo(i) {
 
             if(!crsaPage) return;
 
-            // sws: blocked
             // var win = crsaPage.getWindow();
             var win = crsaPage.parentWindow;
 

@@ -1,12 +1,18 @@
 
 body {
 	background-color: #EEEEF2;
+	overflow: hidden;
 }
 
 .wfb-panel {
 	height: calc(100% - 36px);
 	width: 100%;
 	position: absolute;
+}
+
+option:disabled {
+    font-style: italic;
+    /* font-weight: lighter; */
 }
 
 /*	===================================
@@ -86,6 +92,10 @@ body {
 		vertical-align: middle;
 	}
 
+	.titlebar li.divider {
+	    margin: 5px 15px;
+	}
+
 	div.title {
 		position: absolute;
 		left: 40%;
@@ -98,6 +108,11 @@ body {
 
 	.titlebar i.fa.fa-times {
 		font-size: 20px;
+	}
+	
+	.titlebar > .tb-left-menu i:hover {
+	    /* font-weight: 900; */
+	    color: white;
 	}
 	
 /*	===================================
@@ -353,26 +368,29 @@ body {
 
 	.canvas {
 		position: relative;
-		margin: 10px 290px 2px 290px;
-		height: calc(100% - 12px);
+		margin: 10px 290px 0 290px;
+		height: calc(100% - 32px);
 	}
 
 	.cv-pages {
 		height: 100%;
 		position: relative;
+		display: inline-flex;
 	}
-
+	.cv-pages >.page.active {
+	    background-color: #dedede;
+	}
 	.cv-pages > .page {
 		display: none;
 		position: relative;
 		height: 100%;
 		width: 100%;
 		padding: 5px;
-		background-color: #e2e2e2;
+		background-color: #eaeaea;
 	}
 
-	.cv-pages > .page.active {
-		display: block;
+	.cv-pages > .page.visible {
+		display: inline-block;
 	}
 	.page span.page-change-icon {
 	    font-size: 18px;
@@ -419,6 +437,10 @@ body {
 		left: 0;
 		padding: 3px;
 		vertical-align: middle;
+	}
+	
+	.pg-menu li.divider {
+	    margin: 5px 15px;
 	}
 
 	div.scr-menu > a.scr-setting {
@@ -541,6 +563,41 @@ body {
 	}
 
 /*	===================================
+			canvas tab 				
+	===================================	*/
+	.canvas-tab > span:hover {
+	    cursor: pointer;
+	    color: #b5b4b4;
+	}
+	
+	.canvas-tab > span.visible:hover {
+	    /* cursor: pointer; */
+	    color: #000000;
+	}
+
+	.canvas-tab > span {
+	    font-family: Times New Roman;
+	    font-size: 16px;
+	    padding: 5px;
+	    color: #d0d0d0;
+	    /* font-weight: bold; */
+	    /* font-style: italic; */
+	    white-space: nowrap;
+	}
+	.canvas-tab > span.visible {
+	    color: #404040;
+	}
+
+	.canvas-tab > hr {
+	    padding: 3px 0 5px 0px;
+	    border-color: #d4d4d4;
+	    margin: 0;
+	}
+
+	span.page-change-icon {
+	    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+	}
+/*	===================================
 			db controls tree view 				
 	===================================	*/
 	
@@ -644,8 +701,109 @@ body {
 
 	
 /*	===================================
-			modal dialog 				
+			one-to-many table dialog 				
 	===================================	*/
+
+	.col-list > ul {
+	    list-style: none;
+	    padding-left: 0;
+	}
+
+	.col-list li {
+	    font-size: 14px;
+	    font-weight: 700;
+	}
+
+	.col-list li > a {
+	    font-weight: 100;
+	    font-size: 13px;
+	    /* margin-left: 50px; */
+	}
+
+	.add-column > select {
+	    width: 50%;
+	    display: inline-block;
+	}
+
+	.add-column {
+	    padding: 10px 10px;
+	    background-color: #eeeeee;
+	}
+
+	.col-list > h5 {
+	    margin-top: 40px;
+	}
+
+	.col-list > h5 > span {
+	    font-weight: 800;
+	}
+
+
+/*	===================================
+			one-to-one table dialog 				
+	===================================	*/
+
+	.conflicts {
+	    color: #e82626;
+	    /* margin-right: 20px; */
+	}
+
+
+/*	===================================
+			tooltip
+	=================================== */
+	
+	.tooltip.top .tooltip-arrow {
+	    border-top-color: #fbfbfb;
+	}
+
+	.tooltip-inner {
+	    background-color: #fbfbfb;
+	    color: #484848;
+	}
+
+
+/*	===================================
+			status bar 				
+	===================================	*/
+
+	.status-bar {
+	    position: relative;
+	    margin: 0 290px 2px 290px;
+	    height: 20px;
+	    background-color: #7b7b7b;
+	}
+	
+	.status-bar > ul {
+	    margin-bottom: 0;
+	    padding: 0 5px;
+	    list-style: none;
+	    display: inline-block;
+	}
+
+	.status-bar li {
+	    padding: 0 3px;
+	    margin: 0;
+	    display: inline-block;
+	    color: #f5f5f5;
+	    overflow: hidden;
+	    text-overflow: ellipsis;
+	    white-space: nowrap;
+	    font-size: 13px;
+	}
+
+	.status-bar li:hover {
+	    cursor: pointer;
+	    background-color: #444444;
+	}
+
+	.status-bar li.current {
+	    color: #6dbcdc;
+	}
+
+	.status-bar li.path-over {
+	    color: #a7a7a7;
+	}
 
 
 /*	===================================

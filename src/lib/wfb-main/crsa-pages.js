@@ -13,6 +13,7 @@ var CrsaPage = function(not_interactive) {
 	this.uid = crsaPageUid++;
     this.load_source = null;
     this.undoSetFlag = false;
+    this.undoStack = new CrsaPageUndoStack(this);
     this.frameworks_added = false;
     this.frameworks = [];
     this.live_update = null;
@@ -22,6 +23,10 @@ var CrsaPage = function(not_interactive) {
     this.load_source = null;
     this.isWatchingFileForChanges = false;
     this.watchReloadDialog = null;
+    this.selected_element_pgid = null;
+
+    this.scrollMode = true; //crsaGetCustomLogic().scrollMode;
+    this.deviceWidth = 1024;
 
     this.currentFrameworkHandlerReturnValues={};
     
@@ -30,6 +35,7 @@ var CrsaPage = function(not_interactive) {
     // this.undoStack = new CrsaPageUndoStack(this);
     this.breakpoints = [];
     this.sourceNode = null;
+    this.$iframe = null;
 
     var codeEditor;
 
@@ -117,22 +123,22 @@ var CrsaPage = function(not_interactive) {
     }
 
     this.closePage = function(done) {
-        debugger;
         var ask = null;
 
         var ask_close_html = "This page has unsaved changes. Are you sure you want to close it?";
         var ask_close_css = "Stylesheets attached to this page have unsaved changes. Are you sure you want to proceed?";
 
         var askOnCloseDialog = function(ask, leave_css) {
+
             var $alert = showAlert(ask,  "Page has unsaved changes", "Cancel", "Save & Close", null, function() {
                 self.save(function() {
+                    methods.closePage(self, leave_css);
                     if (done) done();
-                    // method.closePage(this, leave_css);
                 }, true, true);
             })
             $('<a href="#" class="btn pull-left">Don\'t save</a>').appendTo($alert.find('.modal-footer')).on('click', function(e) {
                 e.preventDefault();
-                // method.closePage(this, leave_css);
+                methods.closePage(self, leave_css);
                 $alert.modal('hide');
                 if (done) done();
             });
@@ -141,14 +147,16 @@ var CrsaPage = function(not_interactive) {
         if(this.hasCssChanges()) {
             ask = ask_close_css;
         }
+
         if(this.changed && !this.force_close) {
             ask = ask_close_html;
         }
+
         if(ask) {
             askOnCloseDialog(ask);
         } else {
+            methods.closePage(this);
             if (done) done();
-            // methods.closePage(this);
         }
     }
 
@@ -280,7 +288,6 @@ var CrsaPage = function(not_interactive) {
         var $dialog = makeDialog("Select media query", "Cancel", "Ok", $c).css('width','400px');
         $body.append($dialog);
 
-        // sws: blocked
         // $dialog.find('.modal-footer').prepend('<a href="#" class="pull-left manage btn btn-link">Manage breakpoints...</a>').css('margin-top', '0px');
 
         $dialog.find('.modal-body').css('padding-bottom', '0px');
@@ -463,6 +470,19 @@ var CrsaPage = function(not_interactive) {
         return tool;
     }
 
+    this.refresh = function(done) {
+        if(done) {
+            var onDone = function(page) {
+                done(page);
+                setTimeout(function() {
+                    pinegrow.removeEventHandler('on_page_shown_in_live_view', onDone);
+                }, 0);
+            }
+            pinegrow.addEventHandler('on_page_shown_in_live_view', onDone);
+        }
+        $('.canvas').trigger('crsa-page-refresh', this);
+    }
+
     this.autoSize = function() {
         methods.autoSizePage(this.$iframe, this.scrollMode);
     }
@@ -486,7 +506,6 @@ var CrsaPage = function(not_interactive) {
         var $contents = this.$iframe.contents();
         var o = $contents.scrollTop();
 
-        //sws//block:
          $(this.getBody()).redraw();
         $contents.scrollTop(o);
         /*
@@ -570,7 +589,6 @@ var CrsaPage = function(not_interactive) {
     }
 
     this.setPageChanged = function(val, force) {
-
         if(this.live_update && this.save_parent) val = false;
 
         if(this.changed != val || force) {
@@ -678,7 +696,6 @@ var CrsaPage = function(not_interactive) {
 
     this.getCompatibleUrl = function(url) {
         if(crsaIsFileUrl(url)) {
-            // sws: blocked
             // if(service.sourceParser) {
                 url = service.httpServer.makeUrl(url);
             // }
@@ -697,6 +714,7 @@ var CrsaPage = function(not_interactive) {
     }
 
     this.addCrsaStyles = function() {
+        debugger;
         var o = {css: '.crsa-highlighted {\
             box-shadow: 0 0 10px rgba(0, 255, 0, 0.9) !important;\
         }\
@@ -749,7 +767,6 @@ var CrsaPage = function(not_interactive) {
             animation: none !important;\
         }';
 
-        // sws: blocked
         // this.callFrameworkHandler('on_set_inline_style', o);
 
         var css = '<style id="' + cssid + '">' + o.css + '</style>';
@@ -820,8 +837,18 @@ var CrsaPage = function(not_interactive) {
         $.each(service.getFrameworks(), function(key, f) {
             addFramework(f);
         });
+        
+        sortFrameworksByOrder();
 
         this.frameworks_added = true;
+    }
+
+    var sortFrameworksByOrder = function() {
+        self.frameworks = self.frameworks.sort(function (a, b) {
+            if (a.order > b.order) return 1;
+            if (a.order < b.order) return -1;
+            return 0;
+        });
     }
 
     this.getLibSections = function() {
@@ -976,13 +1003,14 @@ var CrsaPage = function(not_interactive) {
 
                         var url = crsaMakeUrlFromFile(self.localFile);
                         if(url != self.url && crsaIsFileUrl(self.url)) self.rename(url);
-                        if(done) done(err);
 
                         if(save_html) {
                             self.setPageChanged(false);
                         }
+                        
+                        if(done) done(err);
 
-                        crsaQuickMessage("Page was saved sucessfully!", 2000);
+                        crsaQuickMessage(self.name + " was saved sucessfully!", 2000);
                     }
 
                     var isFile = crsaIsFileUrl(this.url);
@@ -1007,7 +1035,6 @@ var CrsaPage = function(not_interactive) {
                         var count = 0;
                         var fileWriter = null;
 
-                        // sws: blocked
                         // if(ask_css_overwrite) {
                         //     fileWriter = new CrsaOverwriteProtectionFileWriter('dummy_source', null);
                         //     fileWriter.use_export_cache = false;
@@ -1119,22 +1146,319 @@ var CrsaPage = function(not_interactive) {
         }
     }
 
+    this.duplicate = function() {
+        var cp = new CrsaPage();
+        cp.url = this.url;
+        cp.wrapper_url = this.wrapper_url;
+        cp.wrapper_selector = this.wrapper_selector;
+        cp.scrollMode = this.scrollMode;
+        cp.javascriptEnabled = this.javascriptEnabled;
+
+        cp.frameworks = this.frameworks.slice(0);
+        cp.frameworks_added = this.frameworks.length > 0;
+        // cp.frameworksChanged();
+
+        cp.breakpoints = this.breakpoints.slice(0);
+        var skip = [];
+        for(var j = 0; j < crsaPages.length; j++) {
+            skip.push(crsaPages[j].name);
+        }
+
+        cp.name = crsaDuplicateName(this.name, this.localFile, skip);
+        if(this.localFile) {
+            cp.setLocalFile(crsaGetFileDir(this.localFile) + cp.name);
+        }
+        return cp;
+    }
+
+    this.copyContentOfPage = function(crsaPage, skip_refresh) {
+
+        var ret = this.applyChangesToSource(crsaPage.sourceNode, false, true, service.getSelectedPage() == this);
+
+        if(ret.changes && !ret.updated && !skip_refresh) {
+            this.refresh();
+        }
+    }
+
+    this.updatePageMenus = function(crsaPage) {
+        var $page = this.$page;
+        var name = this.name;
+        var src = this.url;
+         
+        // var $code = $page.find('.edit-code');
+       
+        // // $code = $('<div/>', {class: 'edit-code btn-group'}).html('<button type="button" class="btn btn-link btn-xs"><i class="fa fa-code edit-code-icon"></i></button>').insertAfter($device);
+        // $code.on('click', function(e) {
+        //     e.preventDefault();
+        //     crsaPage.toggleEditCode();
+        // })
+        // addTooltip($code, 'Show/hide code editor');
+   }
+
+    this.toggleEditCode = function() {
+        if(service.codeEditor.isInEdit(this.$iframe)) {
+            service.codeEditor.exitEdit(false);
+        } else {
+            this.editCode();
+        }
+    }
+
+    this.editCode = function() {
+        wfbuilder.editCode(this.$iframe);
+    }
+
+    this.applyChangesToSource = function(html_or_node, abort_on_errors, skip_was_changed, update_stylesheets, event_type) {
+        /* returns
+            true - updated
+            array - errors
+            false - whole doc changed, not updated
+            previewUpdated
+         */
+        var ret = {changes: null, errors: null, updated: false, stylesheets_changed: false, scripts_changed: false, whole_changed: false};
+
+        var rootNode;
+        var clone = false;
+
+        var parser = null;
+
+        if(this.onlyCode) {
+            var code = typeof html_or_node == 'string' ? html_or_node : html_or_node.toStringOriginal(true);
+            if(code != this.code) {
+                this.code = code;
+                this.setPageChanged(true);
+            }
+            ret.updated = true;
+            return ret;
+        }
+
+        if(typeof html_or_node == 'string') {
+            parser = new pgParser();
+            parser.assignIds = false;
+            parser.parse(html_or_node);
+            rootNode = parser.rootNode;
+        } else {
+            rootNode = html_or_node;
+            clone = true;
+        }
+
+        ret.errors = rootNode.validateTree();
+        if(ret.errors.length && abort_on_errors) {
+            //debugger;
+            //console.log('ERRORS');
+            //console.log(ret.errors);
+            return ret;
+        }
+
+        var changes = pgFindChangedNodesInPage(this.sourceNode, rootNode);
+        ret.changes = changes;
+
+        var $update_els = $([]);
+
+        var done = false;
+        var stylesheets_changed = false;
+
+        var css_tags = ['style', 'html', 'head'];
+
+        if(changes.length && this.openedInEditor) {
+            service.httpServer.setCurrentRequestContext(this.url, rootNode);
+
+            var whole = false;
+            for(var i = 0; i < changes.length; i++) {
+                var ch = changes[i];
+                if(ch.original.parent == null) {
+                    whole = true;
+                    ret.whole_changed = true;
+                    break;
+                }
+            }
+            if(!whole) {
+                for(var i = 0; i < changes.length; i++) {
+                    var ch = changes[i];
+
+                    var pgid = ch.original.getId();
+
+                    var $el = this.getElementWithPgId(pgid);
+
+                    if(clone) {
+                        ch.changed = ch.changed.clone(true);
+                    }
+                    ch.changed.assignIdAndAddToCatalog(true);
+                    ch.original.replaceWith(ch.changed);
+
+                    if(css_tags.indexOf(ch.original.tagName) >= 0 || css_tags.indexOf(ch.changed.tagName) >= 0 ||
+                        (ch.original.tagName == 'link' && ch.original.getAttr('rel') == 'stylesheet') ||
+                        (ch.changed.tagName == 'link' && ch.changed.getAttr('rel') == 'stylesheet')) {
+
+                        stylesheets_changed = true;
+                    }
+                    if(ch.original.tagName == 'script' || ch.changed.tagName == 'script') {
+                        ret.scripts_changed = true;
+                    }
+
+                    if($el) {
+                        var tree_id = $el.attr('data-pg-tree-id');
+                        var str = ch.changed.toStringWithIds(true, null, service.httpServer.createProxyUrlNodeOutputFilter);
+                        $el.get(0).outerHTML = str;
+
+                        var $el = this.getElementWithPgId(ch.changed.getId());
+
+                        if(/* tree_id && */ $el) {
+                            // $el.attr('data-pg-tree-id', tree_id);
+                            $update_els = $update_els.add($el.get(0));
+                        }
+
+                    }
+                    done = true;
+                }
+            }
+            if(done) {
+                if($update_els.length && this == service.getSelectedPage() && this.openedInEditor) {
+                    wfbuilder.updateStructureAndWireAllElemets(this.$iframe, $update_els, true);
+                }
+
+                if(stylesheets_changed && update_stylesheets) {
+                    _this.updateStylesheetsList();
+                }
+                this.setPageChanged(true);
+                if(!skip_was_changed && this.openedInEditor) {
+                    didMakeChange(this.$iframe, null, null, null, event_type);
+                }
+                ret.updated = true;
+                ret.stylesheets_changed = stylesheets_changed;
+                return ret;
+            }
+        } else {
+            //console.log('no changes');
+            ret.updated = true;
+            return ret;
+        }
+        this.sourceNode.remove();
+        this.sourceNode = clone ? rootNode.clone(true) : rootNode;
+        this.sourceNode.assignIdAndAddToCatalog(true);
+        //console.log('whole document is changed.');
+        //this.refresh();
+        return ret;
+    }
+
+     this.getSource = function(full_source, skip_beautify) {
+
+        var addHtml = function(src) {
+            var h = '<html';
+            $.each(getIframeHtmlElement(_this.$iframe.get(0)).attributes, function(idx, attr) {
+                h += ' ' + attr.nodeName + '="' + attr.nodeValue + '"';
+            });
+            h += '>';
+
+            return "<!DOCTYPE html>\n" + h + "\n" + src + "\n</html>";
+        }
+
+        var str;
+
+        if(this.sourceNode) {
+            //console.log(this.sourceNode.toDebug());
+
+            str = this.sourceNode.toStringOriginal(true, service.getFormatHtmlOptions());
+            //console.log(str);
+
+            //console.log(this.sourceNode.toStringWithIds());
+
+            if(!skip_beautify) {
+                //str = html_beautify(str);
+            }
+        } else {
+            this.doWithoutCrsaStyles(function() {
+
+                var doc = _this.getDocument();
+                var $html = $(doc).find('> html').clone(true);
+
+                _this.callFrameworkHandler('on_get_source', $html);
+
+                str = $html.length > 0 ? $html[0].innerHTML : '';
+                str = str.replace(/(<[^>]*)\s*contenteditable="true"/ig, '$1');
+                str = str.replace(/(<[^>]*)\s*style=""/ig, '$1');
+                str = removeCrsaClassesFromHtml(str);
+
+            });
+            if(full_source) {
+                str = addHtml(str);
+                if(!skip_beautify) {
+                    str = html_beautify(str);
+                }
+                return this.template.getTemplateSource(str);
+            }
+        }
+        return str;
+    }
+
+     this.showInExternalWindow = function() {
+        var gui = require('nw.gui');
+
+        this.externalWindow = gui.Window.open('empty.html', {
+            focus: true
+        });
+
+        this.externalWindow.on('close', function () {
+            _this.externalWindow.close(true);
+            _this.externalWindow = null;
+        });
+        this.externalWindow.setAlwaysOnTop(true);
+
+        var loaded = false;
+        this.externalWindow.on('loaded', function() {
+            if(!loaded) {
+                //debugger;
+                _this.allowReload = true;
+                var $win_body = $(_this.externalWindow.window.document.body);
+                _this.$page.appendTo($win_body.find('#win-content'));
+                loaded = true;
+            }
+        });
+    }
+
+    this.setSyntaxErrorIndicator = function(has_errors, fileNode, project) {
+        if(has_errors) {
+            //this.setFileNodeTag(new CrsaFileTag('syntax', 'danger', 'The page has HTML syntax errors. Right-click -&gt; Validate HTML for info.', 'code'), fileNode, project);
+        } else {
+            //this.removeFileNodeTag('syntax', fileNode, project);
+        }
+    }
 }
+
+
+$.fn.crsapages = function( method ) {
+
+    //var opts = $.extend( {}, $.fn.hilight.defaults, options );
+    if ( methods[method] ) {
+        return methods[method].apply( this, Array.prototype.slice.call( arguments, 1 ));
+    } else if ( typeof method === 'object' || ! method ) {
+        return methods.init.apply( this, arguments );
+    } else {
+        $.error( 'Method ' +  method + ' does not exist on jQuery.crsacss' );
+    }
+};
+
 
 var crsaPages = [];
 var pages = null;
 var currentZoom = 1;
+var centerLeft = 300;
+var centerRight = 300;
+var fitZoom = true;
 
 var methods = {
 	addPage : function(srcUrl, loadedFunc, providedCrsaPage, onLoadCanceled, options) {
         var name = getPageName(srcUrl);
+        if (providedCrsaPage) {
+            name = providedCrsaPage.name;
+        }
 
         var self = this;
 
 		var new_page = {
 			crsaPage: ko.observable(null),
-			name: name,
+			name: ko.observable(name),
 			active: ko.observable(true),
+            visible: ko.observable(true),
 			state: {
                 changed: ko.observable(true),
 				width: ko.observable(1024),
@@ -1145,17 +1469,27 @@ var methods = {
 		};
 		var ss_id = cv_h.opened_files.subscribe(function(value) {
             ss_id.dispose();
+
+            if (cv_h.opened_files().length > 1)
+                cv_h.opened_files()[cv_h.active_file()].active(false);
+
+            cv_h.active_file(cv_h.opened_files().length - 1);
+            cv_h.opened_files()[cv_h.active_file()].active(true);
+
 			tmpFunc();
 		});
 		cv_h.opened_files.push(new_page);
-		cv_h.active_file(cv_h.opened_files().length - 1);
-
+        
 		var tmpFunc = function() {
-			tt_h.current_title(cv_h.opened_files()[cv_h.active_file()].name + " - ");
-
+			// tt_h.current_title(cv_h.opened_files()[cv_h.active_file()].name() + " - ");
+            debugger;
 	        var $page = $("div.page.active");
 	        var $content = $page.find("div.content");
 	        var $iframe = $content.find("iframe");
+
+            $page.on("click", function(event) {
+                wfbuilder.setSelectedPage($iframe);
+            });
 
 	        var crsaPage;
 	        if (!providedCrsaPage) {
@@ -1170,6 +1504,7 @@ var methods = {
 	        crsaPage.$page = $page;
 	        crsaPage.$iframe = $iframe;
 	        crsaPage.$iframe.data('crsa-page', crsaPage);
+            crsaPage.$iframe.data('crsa-kopage', new_page);
 
             crsaPage.setPageChanged(false, true);
 
@@ -1180,11 +1515,7 @@ var methods = {
 	        	if (loadedFunc) loadedFunc(a, b);
 	        }, onLoadCanceled);
 
-            var updatePagesList = function($el) {
-                $el.each(function(i,e){
-                    pages = $(e).find('div.page');
-                });
-            }
+            crsaPage.updatePageMenus(crsaPage);
 
             updatePagesList($(".canvas"));
 	    }
@@ -1200,7 +1531,6 @@ var methods = {
                 page_loaded_called = true;
                 crsaPage.setSource(crsaPage.load_source, null, true);
                 crsaPage.load_source = null;
-                // sws: blocked
                 // crsaPage.runScripts(function() {
                 //     crsaPage.callFrameworkHandler('on_page_loaded');
                 //     $.fn.crsa('updateIfNeeded');
@@ -1288,6 +1618,58 @@ var methods = {
             doWithExists(true);
         }
 	},
+    refresh : function() {
+        //debugger;
+        var cw = 0;
+        var $code = $("#textedit");
+        if($code.is(':visible')) {
+            cw = $code.width() + 5;
+        }
+        //methods.centerPages($('#crsa-left-plane').is(':visible') ? centerLeft : 10, ($('#crsa-tree').is(':visible') ? $('#crsa-tree').width() : 10) + cw);
+
+        // sws: blocked
+        // methods.centerPages(centerLeft, centerRight);
+
+        if(fitZoom) {
+            methods.zoom(getFitZoomScale());
+        } else {
+            methods.zoom(currentZoom);
+        }
+    },
+    zoom : function(zoom) {
+        var $pages = pages.find('> div.content');
+        var $iframes = pages.find('iframe');
+        var min = 200;
+
+        currentZoom = zoom;
+       // methods.centerPages(centerLeft, $('#crsa-tree').width());
+
+        $pages.each(function(i,e) {
+            var $e = $(e);
+
+            var $if = $e.find('iframe');
+            var cp = getCrsaPageForIframe($if);
+
+            w = cp.deviceWidth;
+
+            //.css('height', '') leave it out
+            $if.css('width',w + 'px').css('transform','scale(' + zoom + ', ' + zoom + ')').css('transform-origin', '0 0');
+
+            sizePage($if, zoom, cp.scrollMode, w);
+
+             /*
+            var h = Math.ceil($if[0].contentWindow.document.body.scrollHeight * 1.05);
+            $if.css('height', h + 'px');
+
+
+            $e.css('width', cw + 'px').css('height', Math.ceil(h * zoom) + 'px' );
+            */
+            $if.data('zoom', zoom);
+        });
+        repositionSelectedElementMenu();
+        //$.fn.crsa('refreshSelectElement'); maybe dont need this
+        return this;
+    },
 	showLoadingOverlay: function($p, hide, onCancel) {
         var $if = $p.find('.content-iframe');
         var $c = $p.find('.content');
@@ -1356,7 +1738,6 @@ var methods = {
         })
     },
     showOverlays : function(hide) {
-        debugger;
         pages.each(function(i,p) {
             var $p = $(p);
             var $if = $p.find('.content-iframe');
@@ -1373,20 +1754,88 @@ var methods = {
     },
     autoSizePage : function($if, scroll_mode) {
         sizePage($if, currentZoom, scroll_mode);
+    },
+    closePage: function(crsaPage, leave_css) {
+        var $page = crsaPage.$page;
+        var $iframe = $page.find('iframe');
+        var $canvas = $('div.canvas');
+        //sws//block: methods.updateFilesName(crsaPage);
+
+        $page.trigger('crsa-page-closed', crsaPage);
+
+        var ps = getCrsaPageStylesForPage($iframe);
+
+        if(ps && !leave_css) {
+            ps.removeAllExclusiveSheets();
+        }
+        var idx = crsaPages.indexOf(crsaPage);
+        if(idx >= 0) crsaPages.splice(idx, 1);
+
+        for(var i = 0; i < crsaPages.length; i++) {
+            if(crsaPages[i].live_update == crsaPage) {
+                crsaPages[i].setLiveUpdate(null);
+            }
+        }
+        //sws//block: crsaPage.onClose();
+
+        $page.remove();
+
+        cv_h.opened_files.splice(cv_h.active_file(), 1);
+        updatePagesList($canvas);
+
+        service.httpServer.releaseRequestContextForPage(crsaPage);
+        $('body').trigger('crsa-stylesheets-changed');
+        $canvas.trigger('crsa-page-closed-removed', crsaPage);
+    },
+    clearUndoSetFlag : function() {
+        $.each(crsaPages, function(i,p) {
+            p.undoSetFlag = false;
+        })
     }
 }
 
+var updatePagesList = function($el) {
+
+    $el.each(function(i,e){
+        pages = $(e).find('div.page');
+    });
+
+    // if(pages.length == 0 && !service.getCurrentProject()) {
+    //     $empty.show();
+    //     //sws//pinegrow.statusBar.$element.hide();
+    //     //sws// alignEmptyCanvas();
+    //     if(!service.getCurrentProject()) {
+    //         // $('#crsa-left-plane').hide();
+    //         // $('#crsa-tree').hide();
+    //         $(window).trigger('resize');
+    //     }
+    //     //pinegrow.hideLeftPanel();
+    // } else {
+    //     $empty.hide();
+
+    //    // if(panels_hidden) {
+    //         $(window).trigger('resize');
+    //     //pinegrow.statusBar.$element.show();
+    //    // }
+    // }
+    // $(window).trigger('resize');
+    methods.refresh();
+}
+
 var sizePage = function($if, zoom, scroll_mode, w) {
-    return;//sws//temp
     var $e = $if.closest('.content');
     if(!w) w = $if.width();
     var cw = Math.ceil(w * zoom);
+    var min = 200;
+    cw = Math.ceil(w * zoom) < min ? min : Math.ceil(w * zoom);
     //$if.css('height', ''); disable scroll_mode
     var h;
     var eh;
     var $canvas = $('div.canvas');
     if(scroll_mode) {
-        var bh = /*$body.height() - 90 */ $canvas.height() - 50 - $.fn.crsa('getPageTabs').getHeight() - 40/* //sws// service.statusBar.getHeight()*/ /* status bar */;
+        var bh = /*$body.height() - 90 */ $canvas.height() - 40;
+        if (cv_h.opened_files().length > 1)
+            bh -= $(".canvas-tab").height(); //sws// - pinegrow.statusBar.getHeight() /* status bar */;
         h = bh / zoom;
         eh = bh;
     } else {
@@ -1397,9 +1846,50 @@ var sizePage = function($if, zoom, scroll_mode, w) {
     $e.css('width', cw + 'px').css('height', eh + 'px' );
 
     var $p = $e.parent();
+    $p.css('width', cw + 10 + 'px');
     if(cw < 225) {
         $p.addClass('narrow');
     } else {
         $p.removeClass('narrow');
     }
+
+}
+
+var getFitZoomScale = function() {
+    var spc = 5;
+    var w = 0,
+    sw = spc;
+
+    $.each(cv_h.opened_files(), function(i,op) {
+        if(op.visible()) {
+            w += op.crsaPage().deviceWidth;
+            sw += spc;
+        }
+    });
+    var space = $('div.canvas').width();// - 12;// - centerLeft - centerRight;
+    //console.log('fit ' + w + ' ' + space);
+    var z = (space - sw) / w;
+    var min = 200;//230;//214;
+
+    w = 0;
+    sw = spc;
+    do {
+        var all_min = true;
+        var len = sw;
+        $.each(cv_h.opened_files(), function(i,op) {
+            if(op.visible()) {
+                if(op.crsaPage().deviceWidth * z < min) {
+                    len += min;
+                } else {
+                    len += op.crsaPage().deviceWidth * z;
+                    all_min = false;
+                }
+                len += spc;
+            }
+        });
+        if(len > space) z = z * 0.98;
+    } while(!all_min && len > space);
+
+    if(z > 1.0) z = 1.0;
+    return z;
 }

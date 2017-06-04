@@ -49,28 +49,36 @@ var DBService = function() {
 	/* gets 'Attrib' table data
 		to get 'idEnt' for the columns for one-to-one table	*/
 	self.do_init = function() {
-		query = "select [idEnt], [entType], [entDisplayAttrib] from entity where entType in (1,2)";
+		query = "select [idEnt], [entType], [entDisplayAttrib], [entSrc] from entity where entType in (1,2)";
 		self.connection.request().query(query, function(err, recordset) {
 			if (err != undefined) {
 				window.alert(err.message);
 				return;
 			}
 			
-			self.appStorage.attrib = {};
-			self.appStorage.entDisplayAttrib = {};
+			self.appStorage.entity = {};
 			for (i = 0 ; i < recordset.length ; i ++) {
-				self.appStorage.attrib[recordset[i].idEnt] = recordset[i].entType;
-				self.appStorage.entDisplayAttrib[recordset[i].idEnt] = recordset[i].entDisplayAttrib;
+				var ent = {};
+				ent.entType = recordset[i].entType;
+				ent.entSrc = recordset[i].entSrc;
+				ent.entDisplayAttrib = recordset[i].entDisplayAttrib;
+
+				self.appStorage.entity[recordset[i].idEnt] = ent;
 			}
 		});
 	};
 
 	/*  functions for saving db connection: connection config, idWfClass */
 	self.save_connection = function() {
+		var server = self.connection.config.server;
+
+		if (self.connection.config.options.instanceName)
+			server += "\\" + self.connection.config.options.instanceName;
+
 		self.appStorage.db_connection.config = {
 			user: self.connection.config.user,
 			password: self.connection.config.password,
-			server: self.connection.config.server,
+			server: server,
 			database: self.connection.config.database,
 			port: self.connection.config.port
 		};
@@ -128,8 +136,8 @@ var DBService = function() {
 			for(i = 0; i < recordset.length; i ++) {
 				if (recordset[i].attribAttributeType != 1)
 					continue;
-				recordset[i].entType = self.appStorage.attrib[recordset[i].idEnt];
-				recordset[i].entDisplayAttrib = self.appStorage.entDisplayAttrib[recordset[i].idEnt];
+				recordset[i].entType = self.appStorage.entity[recordset[i].idEnt].entType;
+				recordset[i].entDisplayAttrib = self.appStorage.entity[recordset[i].idEnt].entDisplayAttrib;
 			}
 
 			/* now gets one-to-many tables of specific table 'tb' */
@@ -150,6 +158,29 @@ var DBService = function() {
 
 				callback(recordset1.concat(recordset));
 			});
+		});
+	};
+
+	/* gets value list for a specified column of a table */
+	self.get_valueList = function(idEnt, column, callback) {
+		var query = "select [";
+		if (typeof column == "object") {
+			query += column[0];
+			for (var i = 1 ; i < column.length ; i ++) {
+				query += "], [" + column[i];
+			}
+		} else {
+			query += column;
+		}
+		query += "] from " + self.appStorage.entity[idEnt].entSrc;
+
+		self.connection.request().query(query, function(err, recordset) {
+			if (err && err != undefined) {
+				window.alert(err.message);
+				return;
+			}
+			
+			callback(recordset);
 		});
 	};
 

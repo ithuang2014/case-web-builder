@@ -46,6 +46,36 @@ var Service = function() {
 
         return $d;
     }
+    this.setSetting = function(key, value) {
+        key = 'settings-' + key;
+        window.localStorage[key] = value;
+    }
+    this.getStylesheets = function() {
+        return $.fn.crsacss('getAllCrsaStylesheets');
+    }
+
+    this.getPageForElement = function($el) {
+        var $if = getIframeOfElement($el);
+         if($if) {
+              return getCrsaPageForIframe($if);
+        }
+        return null;
+    }
+    this.showCSSRules = function($el, filter, active) {
+        wfbuilder.showCSSRules($el, filter, active);
+    }
+
+    this.addEventHandler = function(event, func) {
+       
+        if(!event_handlers[event]) {
+            event_handlers[event] = [];
+        }
+        event_handlers[event].push(func);
+    }
+    this.getAllPages = function() {
+        return methods.getAllPages();
+    }
+
 
     this.showQuickMessage = function(msg, duration, single, context) {
         return crsaQuickMessage(msg, duration, single, context);
@@ -238,6 +268,7 @@ var Service = function() {
     this.getPlaceholderImage = function() {
         var path;
         if(isApp()) {
+            debugger;
             path = this.getProxyUrl(crsaMakeUrlFromFile(crsaGetAppDir() + '/placeholders/img'));
         } else {
             path = "http://pinegrow.com/placeholders/img";
@@ -340,6 +371,14 @@ var Service = function() {
         }
         return false;
     }
+
+    this.isContributorMode = function() {
+        var p = crsaStorage.getValue('activatedProduct');
+        if(p && p.indexOf('CMSUSER') >= 0) return true;
+        return service.getSetting('contributor-mode', 'false') == 'true';
+    }
+
+    this.insight = new PgInsight();
 }
 
 var PgFramework = function(key, name) {
@@ -1112,8 +1151,7 @@ var PgComponentTypeResource = function(url, code) {
 
         this.copy(dest_path, done, overwrite_existing);
     }
-
-*/
+    */
 
     this.copy = function(dest, done, overwrite_existing, file_writter) {
         var path = require('path');

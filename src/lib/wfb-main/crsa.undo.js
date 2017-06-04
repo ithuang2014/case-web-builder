@@ -79,7 +79,6 @@ var CrsaPageUndoStack = function(page) {
     this.page = page;
 
     this.add = function(name, no_pointer, force_cs) {
-
         var d = new CrsaUndoState(this.page, name, force_cs);
 
         if(stack.length > pointer + 1) {
@@ -113,6 +112,7 @@ var CrsaPageUndoStack = function(page) {
     }
 
     this.undo = function(done) {
+        debugger;
         var x = last == 'undo' ? 0 : 1;
         if(pointer < 0 + x) {
             if(done) done(null);
@@ -127,6 +127,7 @@ var CrsaPageUndoStack = function(page) {
     }
 
     this.redo = function(done) {
+        debugger;
         var x = last == 'undo' ? 2 : 1;
         if(pointer + x >= stack.length) {
             if(done) done(null);
