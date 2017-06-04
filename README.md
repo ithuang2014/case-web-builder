@@ -5,10 +5,6 @@ There are lots of web design tool to build a responsive websites with Bootstrap 
 As such, the goal of this project is to build a web design tool which is working with a database. The web design tool should use NW.JS to develop.
 
 # Milestones
-## milestone#1 (2017-03-15)
-- SRS document
-## milestone#2 (2017-04-07)
-- UI skeleton and demo presentation
 ## milestone#3-1 (2017-05-12)
 ### Added following features:
 - 1.1			Create New Page
@@ -47,3 +43,9 @@ As such, the goal of this project is to build a web design tool which is working
 - 6.2.6.3	Delete CSS rule	
 - 6.2.6.4	Rearrange CSS rule order	
 - 6.2.6.5	Assign / Unassign CSS rule
+
+## milestone#2 (2017-04-07)
+- UI skeleton and demo presentation
+
+## milestone#1 (2017-03-15)
+- SRS document
