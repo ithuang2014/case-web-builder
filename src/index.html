@@ -10,9 +10,11 @@
 	<link rel="stylesheet" type="text/css" href="./bootstrap/css/bootstrap.css">
 	<link rel="stylesheet" type="text/css" href="./lib/autoComplete/style.css">
 	<link rel="stylesheet" type="text/css" href="./lib/spectrum/spectrum.css">
+	<link rel="stylesheet" type="text/css" href="./lib/codemirror/codemirror.css">
 	<link rel="stylesheet" type="text/css" href="./style.css">
 	<link rel="stylesheet" type="text/css" href="./edit.css">
-
+	
+	<script type="text/javascript" src="./lib/less/less.js"></script>
 	<script type="text/javascript" src="./lib/jquery/jquery-3.2.0.js"></script>
 	<script type="text/javascript" src="./lib/jquery-ui/jquery-ui.js"></script>
 	<script type="text/javascript" src="./lib/kojs/knockout.debug.js"></script>
@@ -21,6 +23,7 @@
     <script type="text/javascript" src="./lib/autoComplete/autocomplete.js"></script>
 	<script type="text/javascript" src="./lib/spectrum/spectrum.js"></script>
 	<script type="text/javascript" src="./lib/formathtml/formathtml.js"></script>
+	
 </head>
 
 <body>
@@ -29,6 +32,7 @@
 	<hr>
 	<div class="wfb-panel">
 	</div>
+	
 	<div class="wfb-alert"></div>
 <!-- 	<script type="text/javascript">
 		nw.Window.get().evalNWBin(null, './frameworks/cssrules.bin');
@@ -51,7 +55,8 @@
  -->
 	<script type="text/javascript" src="frameworks/cssrules.js"></script>
 	<script type="text/javascript" src="./frameworks/bootstrap3.3.7/load.js"></script>
-
+	<script type="text/javascript" src="./frameworks/plainHtml/load.js"></script>
+    <script type="text/javascript" src="./lib/wfb-main/plugins/pg.insight.js"></script>
 	<script type="text/javascript" src="./lib/wfb-main/crsa-pages.js"></script>
 	<script type="text/javascript" src="./lib/wfb-main/crsa-store.js"></script>
 	<script type="text/javascript" src="./lib/wfb-main/dbservice.js"></script>
@@ -64,7 +69,32 @@
 	<script type="text/javascript" src="./lib/wfb-main/viewmodel.js"></script>
 	<script type="text/javascript" src="./lib/wfb-main/crsa.css.js"></script>
 	<script type="text/javascript" src="./lib/wfb-main/crsa.undo.js"></script>
+	<script type="text/javascript" src="./lib/wfb-main/crsa.edit.js"></script>
 	<script type="text/javascript" src="./lib/wfb-main/main.js"></script>
+	<script type="text/javascript" src="./lib/codemirror/codemirror.js"></script>
+	<script type="text/javascript" src="./lib/codemirror/addon/hint/show-hint.js"></script>
+    <script type="text/javascript" src="./lib/codemirror/addon/hint/xml-hint.js"></script>
+    <script type="text/javascript" src="./lib/codemirror/addon/hint/html-hint.js"></script>
+    <script type="text/javascript" src="./lib/codemirror/addon/fold/foldcode.js"></script>
+    <script type="text/javascript" src="./lib/codemirror/addon/fold/brace-fold.js"></script>
+    <script type="text/javascript" src="./lib/codemirror/addon/fold/foldgutter.js"></script>
+    <script type="text/javascript" src="./lib/codemirror/addon/fold/brace-fold.js"></script>
+    <script type="text/javascript" src="./lib/codemirror/addon/fold/xml-fold.js"></script>
+    <script type="text/javascript" src="./lib/codemirror/addon/edit/closetag.js"></script>
+    <script type="text/javascript" src="./lib/codemirror/addon/fold/markdown-fold.js"></script>
+    <script type="text/javascript" src="./lib/codemirror/addon/fold/comment-fold.js"></script>
+    <script type="text/javascript" src="./lib/codemirror/mode/xml/xml.js"></script>
+	<script type="text/javascript" src="./lib/codemirror/php.js"></script>
+	<script type="text/javascript" src="./lib/codemirror/mode/javascript/javascript.js"></script>
+    <script type="text/javascript" src="./lib/codemirror/mode/css/css.js"></script>
+    <script type="text/javascript" src="./lib/codemirror/mode/htmlmixed/htmlmixed.js"></script>
+    <script type="text/javascript" src="./lib/codemirror/mode/clike/clike.js"></script>
+    <script type="text/javascript" src="./lib/codemirror/addon/search/match-highlighter.js"></script>
+    <script type="text/javascript" src="./lib/codemirror/addon/search/search.js"></script>
+    <script type="text/javascript" src="./lib/codemirror/addon/search/searchcursor.js"></script>
+    <script type="text/javascript" src="./lib/codemirror/addon/dialog/dialog.js"></script>
+
+    <script type="text/javascript" src="./lib/emmet/emmet.js"></script>
 	<script type="text/javascript">
 		wfbuilder.init();
 		wfbuilder.go_startup();

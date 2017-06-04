@@ -6,14 +6,14 @@ var html_temp = {
 				<i class=\"fa fa-openid dropdown-toggle\" data-toggle=\"dropdown\"></i>\
 			<!-- ko if: current_state()==\"ws\" -->\
 				<ul class=\"dropdown-menu\">\
-					<li>Create new page</li>\
-					<li>Edit existing page</li>\
+					<li data-bind=\"event: {click: create_new_page}\">Create new page</li>\
+					<li data-bind=\"event: {click: edit_existing}\">Edit existing page</li>\
 					<li>Edit login page</li>\
 					<li>Edit case page</li>\
 					<li class=\"divider\"></li>\
 					<li data-bind=\"event: {click: save}\">Save page</li>\
 					<li data-bind=\"event: {click: save_as}\">Save as</li>\
-					<li>Duplicate</li>\
+					<li data-bind=\"event: {click: duplicate_page}\">Duplicate</li>\
 					<li class=\"divider\"></li>\
 					<li data-bind=\"event: {click: close}\">Close</li>\
 					<li class=\"divider\"></li>\
@@ -29,14 +29,14 @@ var html_temp = {
 		<!-- ko if: current_state()==\"ws\" -->\
 			<div class=\"titlebar-divider\"></div>\
 			<div class=\"pg-concerned\">\
+				<i class=\"fa fa-file-text-o\" data-bind=\"event: {click: create_new_page}\"></i>\
+				<i class=\"fa fa-folder-open-o\" data-bind=\"event: {click: edit_existing}\"></i>\
 				<i class=\"fa fa-floppy-o\" data-bind=\"event: {click: save}\"></i>\
-				<i class=\"fa fa-file-text-o\"></i>\
-				<i class=\"fa fa-folder-open-o\"></i>\
 			</div>\
 			<div class=\"titlebar-divider\"></div>\
 			<div class=\"redo-undo\">\
-				<i class=\"fa fa-undo\"></i>\
-				<i class=\"fa fa-repeat\"></i>\
+				<i class=\"fa fa-undo\" data-bind=\"event: {click: function() { $root.undo();} }\"></i>\
+				<i class=\"fa fa-repeat\" data-bind=\"event: {click: function() { $root.redo();} }\"></i>\
 			</div>\
 			<div class=\"titlebar-divider\"></div>\
 			<div class=\"help dropdown\">\
@@ -52,7 +52,7 @@ var html_temp = {
 			<div class=\"titlebar-divider\"></div>\
 		<!-- /ko -->\
 		</div>\
-		<div class=\"title\" data-bind=\"text: current_title()\">\
+		<div class=\"title\" data-bind=\"text: current_title\">\
 			<span>Web Form Builder</span>\
 		</div>\
 		<div class=\"tb-right-menu pull-right\">\
@@ -153,7 +153,7 @@ var html_temp = {
 				<li class=\"col-xs-6\"><a data-toggle=\"tab\" href=\"#css_\">CSS</a></li>\
 			</ul>\
 			<div class=\"tab-content\">\
-				<div id=\"prop_\" class=\"tab-pane active\">\
+				<div id=\"prop_\" class=\"tab-pane active crsa-properties crsa-panel\">\
 				</div>\
 				<div id=\"css_\" class=\"tab-pane\">\
 					<div id=\"crsa-rules\" class=\"crsa-panel\">\
@@ -163,10 +163,17 @@ var html_temp = {
 		</div>",
 	canvas_panel: 
 		"<div class=\"canvas\">\
-			<div class=\"canvas-tab\" data-bind=\"visible: false\">\
+			<div class=\"canvas-tab\" data-bind=\"visible: opened_files().length > 1\">\
+				<!-- ko foreach: opened_files -->\
+					<span data-bind=\"css: {visible: $data.visible}, event: {click: function(data, event) { $root.selectPage($index, data, event);}}\">\
+						<span data-bind=\"text: $data.name\"></span>\
+						<span class=\"page-change-icon\" data-bind=\"if: $data.state.changed()\">*</span>\
+					</span>\
+				<!-- /ko -->\
+				<hr>\
 			</div>\
 			<div class=\"cv-pages\" data-bind=\"foreach: opened_files\">\
-				<div class=\"page\" data-bind=\"css: $data.active?'active':''\">\
+				<div class=\"page\" data-bind=\"css: {'visible':$data.visible, 'active':$data.active}\">\
 					<span class=\"pg-name\" data-bind=\"text: $data.name\"></span>\
 					<span class=\"page-change-icon\" data-bind=\"if: $data.state.changed()\">*</span>\
 					<div class=\"pg-menu dropdown\">\
@@ -175,11 +182,13 @@ var html_temp = {
 						</a>\
 						<ul class=\"dropdown-menu\">\
 							<li data-bind=\"event: {click: $root.save}\">Save</li>\
-							<li>Duplicate this page</li>\
+							<li data-bind=\"event: {click: $root.duplicate_page}\">Duplicate this page</li>\
 							<li data-bind=\"event: {click: $root.refresh}\">Refresh</li>\
+							<li class=\"edit-code\" data-bind=\"event: {click: $root.edit_code}\">Edit code</li>\
+							<li class=\"divider\"></li>\
 							<li data-bind=\"event: {click: $root.close}\">Close</li>\
+							<li class=\"divider\"></li>\
 							<li>Manage properties</li>\
-							<li>Edit code</li>\
 						</ul>\
 					</div>\
 					<div class=\"scr-menu pull-right dropdown\">\
@@ -188,7 +197,7 @@ var html_temp = {
 						</a>\
 						<ul class=\"dropdown-menu\">\
 							<!-- ko foreach: $root.scr_menu -->\
-								<li data-bind=\"text: $data.content, event: {click: $root.set_scrsize($data.value)}\"></li>\
+								<li data-bind=\"text: $data.content, event: {click: function() { $root.set_scrsize($data.value); } }\"></li>\
 							<!-- /ko -->\
 							<li data-bind=\"text: \'custom / \' + $data.state.width() + \'px\'\"></li>\
 							<li class=\"divider\"></li>\
@@ -220,7 +229,50 @@ var html_temp = {
 					</div>\
 				</div>\
 			</div>\
-		</div>"
+		</div>",
+	vars_panel: 
+		"<div id=\"crsa-vars-panel\">\
+			<div class=\"panel-head\">\
+				<i class=\"fa fa-bars\"></i>\
+					Variables\
+			</div>\
+			<div id=\"crsa-vars\" class=\"panel-content crsa-panel\">\
+			</div>\
+		</div>",
+	edit_wrapper:
+		"<div id=\"textedit_wrapper\">\
+            <div id=\"textedit\">\
+            </div>\
+            <div id=\"textedit_bar\">\
+                <div class=\"file-name pull-left\">\
+                </div>\
+                <div class=\"btn-group btn-group-sm selector\">\
+                <a href=\"#\" class=\"btn btn-link mode-button edit-html\">Html</a>\
+                <a href=\"#\" class=\"btn btn-link mode-button edit-css\">\
+                Css<select class=\"edit-css-select\"/>\
+                </a>\
+                <a href=\"#\" class=\"btn btn-link edit-done\">Done</a>\
+                </div>\
+                <div class=\"btn-group btn-group-sm pull-right\">\
+                    <label href=\"#\" class=\"edit-wrap\" style=\"float: left;padding: 5px 10px;color: #888;font-size: 12px;line-height: 1.5;font-weight: normal;\">\
+                            <input type=\"checkbox\" class=\"wrap\">&nbsp;Wrap</label>\
+                    <button href=\"#\" class=\"btn btn-link edit-refresh\">\
+                            <input type=\"checkbox\" class=\"live-update\">&nbsp;Refresh!</button>\
+                </div>\
+            </div>\
+        </div>\
+        <div class=\"crsa-edit-toolbar\">\
+        </div>",
+    status_bar:
+    	"<div class=\"status-bar\">\
+    		<ul class=\"status-bar-crumbs\" data-bind=\"foreach: elList\">\
+				<li data-bind=\"text: name,\
+				 event: {click: function() {$root.select($index); }, mouseover: function() {$root.hover($index);}},\
+				 css: {'current': $index() == $root.cur_id(), 'path-over': $index() > $root.cur_id()},\
+				 style: {'max-width': $root.max_width() + 'px'}\">\
+				</li>\
+    		</ul>\
+    	</div>"
 }
 
 var comp_modals = {
@@ -288,6 +340,48 @@ var comp_modals = {
 			      <button type=\"button\" class=\"btn btn-primary\" data-dismiss=\"modal\">Save</button>\
 			    </div>\
 			  </div>\
+			</div>\
+		</div>",
+	om_modal:
+		"<div class=\"col-list\">\
+			<ul data-bind=\"foreach: added_cols\">\
+				<li>\
+					<span data-bind=\"text: $root.child_cols()[$data.id].attribDisplayName\"></span>\
+					<a href=\"#\" data-bind=\"event: {click: function() { $root.onCancel($index);}}\"> | Cancel</a>\
+				</li>\
+			</ul>\
+			<h5>Add new column of <span data-bind=\"text: tb_name\"></span></h5>\
+			<div class=\"add-column\">\
+				<select class=\"form-control\" data-bind=\"value: cur_col\">\
+					<option disabled value=\"-1\">selet a column</option>\
+					<option disabled>---------</option>\
+				<!-- ko foreach: child_cols -->\
+					<option data-bind=\"text: $data.attribDisplayName, value: $index, disable: $data.added\"></option>\
+				<!-- /ko -->\
+				</select>\
+				<button class=\"btn btn-gray\" data-bind=\"event: {click: addCol}\">Add</button>\
+			</div>\
+		</div>",
+	oo_modal:
+		"<div class=\"col-list\">\
+			<ul data-bind=\"foreach: added_cols\">\
+				<li>\
+					<span data-bind=\"text: $root.child_cols()[$data.id].attribDisplayName\"></span>\
+					<a href=\"#\" data-bind=\"event: {click: function() { $root.onCancel($index);}}\"> | Cancel</a>\
+				</li>\
+			</ul>\
+			<div class=\"conflicts pull-right\" data-bind=\"if: conflicts() > 0\">\
+				<i class=\"fa fa-exclamation-triangle\"></i><span data-bind=\"text: \' \' + conflicts() + \' conflicts remaining\'\"></span>\
+			</div>\
+			<h5>Add new column of <span data-bind=\"text: tb_name\"></span></h5>\
+			<div class=\"add-column\">\
+				<select class=\"form-control\" data-bind=\"value: cur_col\">\
+					<option disabled value=\"-1\">selet a column</option>\					<option disabled>---------</option>\
+				<!-- ko foreach: child_cols -->\
+					<option data-bind=\"text: $data.attribDisplayName, value: $index, disable: $data.added\"></option>\
+				<!-- /ko -->\
+				</select>\
+				<button class=\"btn btn-gray\" data-bind=\"event: {click: addCol}\">Add</button>\
 			</div>\
 		</div>"
 }

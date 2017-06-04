@@ -468,16 +468,17 @@ var CrsaHttpServer = function(status_callback) {
                         var onParsed = function(original) {
                             var cp = service.getCrsaPageByUrl(url.href);
 
-                            // sws: blocked
-                            // if(cp) {
-                            //     cp.callGlobalFrameworkHandler('on_page_parsed_in_proxy', p.rootNode, url.href);
-                            // }
+                            if(cp) {
+                                cp.callGlobalFrameworkHandler('on_page_parsed_in_proxy', p.rootNode, url.href);
+                            }
 
                             _this.setCurrentRequestContext(fullPathUrl, p.rootNode, false, cp);
 
                             var html_for_browser = p.toStringWithIds(true, null, _this.createProxyUrlNodeOutputFilter);
 
                             var rootNode = p.rootNode;
+                            console.log(request.url);
+                            console.log(rootNode);
 
                             handleWrapper(html_for_browser, rootNode, function(html_for_browser) {
 
