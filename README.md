@@ -5,6 +5,21 @@ There are lots of web design tool to build a responsive websites with Bootstrap 
 As such, the goal of this project is to build a web design tool which is working with a database. The web design tool should use NW.JS to develop.
 
 # Milestones
+## milestone#-extra (2017-06-22)
+### Revised the following features:
+- 3.2, 3.3 Redo, Undo : dim the button when nothing to undo
+- 3.5.6.1 Edit CSS code in code editor : follow code editor for code editing.
+- 5.3.6 Edit text : support double-click to allow text editing
+- 6.1.4 Add new css file : css files can be extended to other page
+- 1.1 Create new page : after log-in, create page via main menu (apps icon) would copy some properties of the page with same name
+- 2.2.5 Set 'remember me' : the platform should connect to db automatically
+- 2.2.6 Select a catalog : please adjust the timeout to 5s instead of 15s
+- DB setting in App logo menu : database settings under apps icon does not work
+- 4.1.1 Drag & Drop column control into HTML editing panel : please append the parent class if the element cannot be inserted other than Table, Form type, please make label and the type on the same line (e.g label located at leftmost of the element)
+- 3.1.3 Duplicate page : the page id is not defined
+- 6.2.6.1 Edit Css rule property by clicking rule name : add regular expression / customized checking for elements validation
+- 4.3.3 Drag & Drop bootstrap control : no need to pop-up alert if the control is dragged within panel area
+
 ## milestone#3-2 (2017-06-03)
 ### Added the following features:
 - 4.1.2   Drag & Drop table control into HTML editing panel
