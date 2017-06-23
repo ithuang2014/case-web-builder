@@ -109,7 +109,7 @@ var catchDisplayBug = function(h) {
     if(!h) return;
     if(h.indexOf('display:block') >= 0 || h.indexOf('display: block;') >= 0) {
         // sws: block
-        // pinegrow.showQuickMessage('Found display:block!!!', 3000, true);
+        // service.showQuickMessage('Found display:block!!!', 3000, true);
         console.log('Found display bug');
         console.trace();
     }
@@ -926,9 +926,9 @@ pgParserNode.prototype.text = function(html) {
 
 pgParserNode.prototype.indentText = function(text, indent, level, html_options) {
     if(indent === null) {
-        if (!html_options) html_options = pinegrow.getFormatHtmlOptions();
+        if (!html_options) html_options = service.getFormatHtmlOptions();
         if (level === null) level = this.getNestingLevel();
-        indent = pinegrow.getHtmlIndentForLevel(level, html_options);
+        indent = service.getHtmlIndentForLevel(level, html_options);
     }
 
     var lines = text.split("\n");
@@ -1549,7 +1549,7 @@ pgParserNode.prototype.getAttributesString = function(filter_func) {
 pgParserNode.prototype.getInlineStylePropertyValue = function(prop, is_url) {
     var v = crsaGetInlineStylePropertyValue(this.getAttr('style'), prop, is_url);
     if(is_url) {
-        v = pinegrow.getOriginalUrl(v);
+        v = service.getOriginalUrl(v);
     }
     return v;
 }
@@ -1618,7 +1618,7 @@ pgParserNode.prototype.assignIdAndAddToCatalog = function(do_subnodes) {
 pgParserNode.prototype.get$DOMElement = function($html) {
     if(this.$el) return this.$el;
     if(!$html) {
-        var page = pinegrow.getCrsaPageOfPgParserNode(this);
+        var page = service.getCrsaPageOfPgParserNode(this);
         if(page) {
             $html = page.get$Html();
         }
@@ -2650,7 +2650,7 @@ pgParserNode.prototype.emitEvent = function(operation, object, data) {
     var page = this.getPage();
     if(!page) return null;
     var o = new PgNodeEvent(this, operation, object, data, page);
-    if(pinegrow.event_conductor) pinegrow.event_conductor.emit(o);
+    if(service.event_conductor) service.event_conductor.emit(o);
     return o;
 }
 
@@ -2710,13 +2710,13 @@ var PgEventHandler = function(port) {
 
     this.start = function() {
         if(port == 0) {
-            pinegrow.event_conductor.addLocalSubscriber(received);
+            service.event_conductor.addLocalSubscriber(received);
         }
     }
 
     this.stop = function() {
         if(port == 0) {
-            pinegrow.event_conductor.removeLocalSubscriber(received);
+            service.event_conductor.removeLocalSubscriber(received);
         }
     }
 }

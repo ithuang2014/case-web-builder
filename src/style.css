@@ -1,12 +1,19 @@
 
 body {
 	background-color: #EEEEF2;
+	overflow: hidden;
+	user-select: none;
 }
 
 .wfb-panel {
 	height: calc(100% - 36px);
 	width: 100%;
 	position: absolute;
+}
+
+option:disabled {
+    font-style: italic;
+    /* font-weight: lighter; */
 }
 
 /*	===================================
@@ -29,17 +36,17 @@ body {
 		display: inline-block;
 	}
 
-	.titlebar > div i {
+	.titlebar > div.tb-left-menu > div > i, .titlebar > div.tb-right-menu > i {
 		font-size: 16px;
 		padding: 0px 5px;
 		vertical-align: middle;
 		-webkit-app-region: no-drag;
 		cursor: pointer;
 	}
-	.titlebar > div i.fa-openid {
+	.titlebar > div.tb-left-menu i.fa-openid {
 		font-size: 25px;
 	}
-	.titlebar > div i.fa-floppy-o {
+	.titlebar > div.tb-left-menu i.fa-floppy-o {
 		font-size: 18px;
 	}
 
@@ -63,11 +70,11 @@ body {
 		position: absolute;
 	}*/
 
-	.titlebar ul.dropdown-menu li:not(.divider):hover {
+	.titlebar div:not(.setting-bar) > ul.dropdown-menu li:not(.divider):hover {
 		background-color: #cacaca;
 		cursor: pointer;
 	}
-	.titlebar ul.dropdown-menu li:not(.divider) {
+	.titlebar div:not(.setting-bar) > ul.dropdown-menu li:not(.divider) {
 		padding: 2px 20px 2px 25px;
 		white-space: nowrap;
 	}
@@ -79,11 +86,15 @@ body {
 	.titlebar ul.dropdown-menu > li {
 		position: relative;
 	}
-	.titlebar ul.dropdown-menu > li > i {
+	.titlebar ul.dropdown-menu > li > i:not(.db-connection) {
 		position: absolute;
 		left: 0;
 		padding: 3px;
 		vertical-align: middle;
+	}
+
+	.titlebar div:not(.setting-bar)  > ul > li.divider {
+	    margin: 5px 15px;
 	}
 
 	div.title {
@@ -100,6 +111,14 @@ body {
 		font-size: 20px;
 	}
 	
+	.titlebar > .tb-left-menu i:hover {
+	    /* font-weight: 900; */
+	    color: white;
+	}
+	
+	.titlebar > div i.nothing, .titlebar > div i.nothing:hover {
+		color: #cecece;
+	}
 /*	===================================
 			Startup Page 				
 	===================================	*/
@@ -148,8 +167,13 @@ body {
 		padding-right: 7px;
 	}
 
+	.titlebar .setting-bar {
+		margin-left: 0;
+		margin-top: 0;
+	}
+
 	.su-buttons {
-		margin-top: 150px;
+		margin-top: 130px;
 		text-align: center;
 	}
 	.su-buttons a {
@@ -190,6 +214,7 @@ body {
 	}
 	.setting-bar ul.dropdown-menu li {
 		margin-bottom: 8px;
+		width: 100%;
 	}
 
 	.onoffswitch {
@@ -238,7 +263,13 @@ body {
 		border-radius: 18px;
 		transition: all 0.15s ease-in 0s;
 	}
-
+	
+	div.onoffswitch+i.fa {
+		font-size: 16px;
+		margin-left: 2px;
+		/* color: darkgray; */
+	}
+	
 	.fa-1-5x {
 	    font-size: 1.53333333em;
 	    line-height: 0.75em;
@@ -247,10 +278,78 @@ body {
 
 	.remember-me {
 		display: inline-block;
-	    margin-left: 25px;
+		/* margin-left: 25px; */
+		position: absolute;
+		right: 10px;
+		top: 2px;
 	}
 
+	p.or {
+	    text-align: center;
+	    font-size: 20px;
+	    color: #a9a9a9;
+	    display: table;
+	    margin: 30px auto 10px auto;
+	}
 
+	p.or:before {
+	  right: 1.5%;
+	}
+
+	p.or:after {
+	  left: 1.5%;
+	}
+
+	.startup-panel p.or:before, .startup-panel p.or:after {
+	  border-top: 1px solid rgba(150, 150, 150, 0.4);
+	  content: '';
+	  display: table-cell;
+	  position: relative;
+	  top: 0.7em;
+	  width: 300px;
+	}
+
+	.recent-files > p {
+	    text-align: center;
+	    color: #969696;
+	    font-size: 16px;
+	    font-weight: bold;
+	}
+
+	.recent-files  ul.sticky-list, .recent-files ul.non-sticky-list {list-style: none;text-align: center;padding-left: 0;}
+
+	.recent-files ul > li >a {
+	    text-decoration: none;
+	    /* font-family: Arial; */
+	    /* font-weight: bold; */
+	    color: #989898;
+	}
+
+	.recent-files li>a:hover {
+	    color: #3d3d3d;
+	    /* font-weight: bold; */
+	}
+
+	ul.sticky-list span.glyphicon:hover, ul.non-sticky-list span.glyphicon:hover {
+	    color: #000000;
+	    cursor: pointer;
+	    font-size: 13px;
+	}
+
+	ul.sticky-list span.glyphicon, ul.non-sticky-list span.glyphicon {
+	    color: #8e8e8e;
+	    font-size: 12px;
+	}
+
+	ul.sticky-list > li:hover > span.glyphicon {
+	    display: inline;
+	}
+
+	ul.sticky-list span.glyphicon {
+	    display: none;
+	}
+
+	
 /*	===================================
 			ab panel 				
 	===================================	*/
@@ -262,9 +361,13 @@ body {
 		border: 1px solid #a0a0a0;
 		border-radius: 0.5%;
 	}
+
+	.wfb-comp .nav-tabs {
+		border-bottom: none;
+	}
 	
 	.wfb-comp > .tab-content {
-		height: calc(100% - 40px);
+		height: calc(100% - 31px);
 		width: 100%;
 		background-color: #dcdcdc;
 		overflow-y: auto;
@@ -291,8 +394,10 @@ body {
 	    color: #a2a2a2;
 	    font-size: larger;
 	    font-weight: bold;
-	    padding-top: 7px;
-	    padding-bottom: 7px;
+	    padding-top: 3px;
+	    padding-bottom: 3px;
+	    text-transform: none;
+	    margin-right: 0;
 	}
 
 	.wfb-comp > ul.nav-tabs > li.active > a {
@@ -315,7 +420,7 @@ body {
 	    content: "";
 	    display: block;
 	    width: 100%;
-	    height: 3px;
+	    height: 2px;
 	    background: white;
 	}
 
@@ -353,31 +458,34 @@ body {
 
 	.canvas {
 		position: relative;
-		margin: 10px 290px 2px 290px;
-		height: calc(100% - 12px);
+		margin: 10px 290px 0 290px;
+		height: calc(100% - 32px);
 	}
 
 	.cv-pages {
 		height: 100%;
 		position: relative;
+		display: inline-flex;
 	}
-
+	.cv-pages >.page.active {
+	    background-color: #dedede;
+	}
 	.cv-pages > .page {
 		display: none;
 		position: relative;
 		height: 100%;
 		width: 100%;
 		padding: 5px;
-		background-color: #e2e2e2;
+		background-color: #eaeaea;
 	}
 
-	.cv-pages > .page.active {
-		display: block;
+	.cv-pages > .page.visible {
+		display: inline-block;
 	}
 	.page span.page-change-icon {
 	    font-size: 18px;
 	}
-	.page > div {
+	.page > div:not(.resizer-overlay) {
 		display: inline-block;
 	}
 	.page > div > a {
@@ -420,6 +528,10 @@ body {
 		padding: 3px;
 		vertical-align: middle;
 	}
+	
+	.pg-menu li.divider {
+	    margin: 5px 15px;
+	}
 
 	div.scr-menu > a.scr-setting {
 		background-color: #f5f5f5;
@@ -438,6 +550,8 @@ body {
 	    width: 100%;
 	    height: calc(100% - 29px);
 	    margin-top: 5px;
+	    overflow-x: hidden;
+	    overflow-y:hidden;
 	}
 	
 	.iframe-loading-overlay {
@@ -474,6 +588,7 @@ body {
 	iframe.content-iframe {
 		width: 100%;
 		height: 100%;
+		backface-visibility: hidden;
 	}
 
 	div.crsa-hl-overlay {
@@ -541,6 +656,41 @@ body {
 	}
 
 /*	===================================
+			canvas tab 				
+	===================================	*/
+	.canvas-tab > span:hover {
+	    cursor: pointer;
+	    color: #b5b4b4;
+	}
+	
+	.canvas-tab > span.visible:hover {
+	    /* cursor: pointer; */
+	    color: #000000;
+	}
+
+	.canvas-tab > span {
+	    font-family: Times New Roman;
+	    font-size: 16px;
+	    padding: 5px;
+	    color: #d0d0d0;
+	    /* font-weight: bold; */
+	    /* font-style: italic; */
+	    white-space: nowrap;
+	}
+	.canvas-tab > span.visible {
+	    color: #404040;
+	}
+
+	.canvas-tab > hr {
+	    padding: 3px 0 5px 0px;
+	    border-color: #d4d4d4;
+	    margin: 0;
+	}
+
+	span.page-change-icon {
+	    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+	}
+/*	===================================
 			db controls tree view 				
 	===================================	*/
 	
@@ -592,7 +742,7 @@ body {
 	    top:1em;
 	    bottom:0;
 	}
-	.tree .indicator.glyphicon-plus-sign {
+	.tree .indicator.fa-plus-circle {
 	    margin-right:5px;
 	    color: white;
 	}
@@ -610,17 +760,12 @@ body {
 	    outline: 0;
 	}
 	
-	.tree .indicator.glyphicon-minus-sign {
+	.tree .indicator.fa-minus-circle {
 	    margin-right: 5px;
 	    color: black;
 	}
 
-	.tree .indicator.glyphicon-minus-sign {
-	    margin-right: 5px;
-	    color: #909090;
-	}
-
-	.tree i.indicator.glyphicon:hover {
+	.tree i.indicator.fa:hover {
 	    color: #58bee6;
 	}
 
@@ -644,27 +789,115 @@ body {
 
 	
 /*	===================================
-			modal dialog 				
+			one-to-many table dialog 				
 	===================================	*/
+
+	.col-list > ul {
+	    list-style: none;
+	    padding-left: 0;
+	}
+
+	.col-list li {
+	    font-size: 14px;
+	    font-weight: 700;
+	}
+
+	.col-list li > a {
+	    font-weight: 100;
+	    font-size: 13px;
+	    /* margin-left: 50px; */
+	}
+
+	.add-column > select {
+	    width: 50%;
+	    display: inline-block;
+	}
+
+	.add-column {
+	    padding: 10px 10px;
+	    background-color: #eeeeee;
+	}
+
+	.col-list > h5 {
+	    margin-top: 40px;
+	}
+
+	.col-list > h5 > span {
+	    font-weight: 800;
+	}
+
+
+/*	===================================
+			one-to-one table dialog 				
+	===================================	*/
+
+	.conflicts {
+	    color: #e82626;
+	    /* margin-right: 20px; */
+	}
+
+
+/*	===================================
+			tooltip
+	=================================== */
+	
+	.tooltip.top .tooltip-arrow {
+	    border-top-color: #fbfbfb;
+	}
+
+	.tooltip-inner {
+	    background-color: #fbfbfb;
+	    color: #484848;
+	}
+
+
+/*	===================================
+			status bar 				
+	===================================	*/
+
+	.status-bar {
+	    position: relative;
+	    margin: 0 290px 2px 290px;
+	    height: 20px;
+	    background-color: #7b7b7b;
+	}
+	
+	.status-bar > ul {
+	    margin-bottom: 0;
+	    padding: 0 5px;
+	    list-style: none;
+	    display: inline-block;
+	}
+
+	.status-bar li {
+	    padding: 0 3px;
+	    margin: 0;
+	    display: inline-block;
+	    color: #f5f5f5;
+	    overflow: hidden;
+	    text-overflow: ellipsis;
+	    white-space: nowrap;
+	    font-size: 13px;
+	}
+
+	.status-bar li:hover {
+	    cursor: pointer;
+	    background-color: #444444;
+	}
+
+	.status-bar li.current {
+	    color: #6dbcdc;
+	}
+
+	.status-bar li.path-over {
+	    color: #a7a7a7;
+	}
 
 
 /*	===================================
 			alert system 				
 	===================================	*/
-/*	.wfb-alert {
-		position: relative;
-		justify-content: center;
-		display: flex;
-		top: 50px;
-	}
 
-	.wfb-alert > div.alert {
-		position: relative;
-		font-size: 15px;
-		height: 40px;
-		padding: 8px 25px;
-		min-width: 300px;
-		text-align: center;
-		box-shadow: 0 2px 4px 0 rgba(0,0,0,0.16),0 2px 10px 0 rgba(0,0,0,0.12)!important;
-		z-index: 10000;
-	}*/
+	.crsa-modal {
+		width: 800px;
+	}

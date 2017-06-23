@@ -3,6 +3,93 @@ function isApp() {
     return typeof process != 'undefined' && process.versions && ('node-webkit' in process.versions);
 }
 
+
+var CrsaPanel = function($el, full_height) {
+    this.$el = $el;
+
+    this.shown = false;
+
+    this.onHide = null;
+
+    if(full_height === undefined) full_height = true;
+
+    this.fullHeight = full_height;
+
+    $el.data('panel', this);
+
+    var _this = this;
+    var $w = $(window);
+
+    var $head = $el.find('> .panel-head');
+    var $content = $el.find('> .panel-content');
+
+    var content_top = $content.position().top;
+
+    var $close = $('<a/>', {href: '#', class: 'panel-close'}).html('<i class="fa fa-times" />').appendTo(this.$el).on('click', function(e) {
+        _this.hide();
+        e.preventDefault();
+    });
+
+    $el.addClass('panel');
+
+    this.autoSize = function(offset) {
+        if(!this.fullHeight) return;
+        if(!offset) offset = this.$el.offset();
+        var h = this.$el.height();
+        var bh = $w.height();
+        
+        //sws//add:
+        if (offset.top < 35) {
+            offset.top = 35;
+            this.$el.offset({top:offset.top});
+        }
+        
+        var nh = bh - offset.top;
+        this.$el.css('height', nh + 'px');
+        $content.css('height', (nh - content_top) + 'px');
+    }
+
+    this.autoSize();
+
+
+    $el.draggable({
+        handle: '.panel-head',
+        scroll: false
+    })
+        .on('dragstart', function(e, ui) {
+            if(ui) {
+                var bh = $w.height();
+                $.fn.crsapages('showOverlays');
+            }
+        })
+        .on('drag', function(e, ui) {
+            if(ui) {
+                _this.autoSize(ui.offset);
+            }
+        })
+        .on('dragstop', function(e, ui) {
+            if(ui) {
+                $.fn.crsapages('showOverlays', true);
+                _this.autoSize(ui.offset);//sws//add: 
+            }
+        });
+
+    this.show = function() {
+        var $body = $(window);
+        this.$el.show();
+        this.autoSize();
+        $el.draggable( "option", "containment", [-200, 0, $body.width() - 100, $body.height() - 100] );
+        this.shown = true;
+    }
+
+    this.hide = function() {
+        this.$el.hide();
+        this.shown = false;
+        if(this.onHide) this.onHide(this);
+    }
+}
+
+
 var CrsaProfile = function(enab) {
     var enabled = false;
     var start_ms;
@@ -29,6 +116,138 @@ var CrsaProfile = function(enab) {
             console.log(name + ' took ' + elapsed_ms + ' ms');
         }
     }
+}
+
+var CrsaSelect = function($input, $val, options, opts) {
+
+    var _this = this;
+
+    this.$input = $input;
+    this.options = null;
+    this.$val = $val;
+    this.val_dict = {};
+
+    var def = {
+        modal: true,
+        title: 'Select an item',
+        multiple: false,
+        class: 'rich-select'
+    }
+    this.opts = $.extend( {}, def, opts );
+
+    this.setOptions = function(options) {
+        this.val_dict = {};
+        for(var n = 0; n < options.length; n++) {
+            var i = options[n];
+            this.val_dict[i.key] = i;
+        }
+        this.options = options;
+    }
+
+    this.setOptions(options);
+
+    this.getSelectedItem = function() {
+        var key = this.$input.val();
+        var item = null;
+        if(key && key in this.val_dict) item = this.val_dict[key];
+        return item;
+    }
+
+    this.paintVal = function() {
+        var item = this.getSelectedItem();
+        this.$val.html('');
+        if(item) this.$val.html(item.html);
+    }
+
+    this.paintVal();
+
+    this.showSelect = function() {
+        if(this.opts.modal) {
+            var selectedItem = this.getSelectedItem();
+            var selectedLi = null;
+
+            var $container = $('<div/>');
+
+            var $searchForm = $('<form class="form-inline search-icon"><div class="form-group"><label for="search-for-icon">Search:</label><input type="search" class="form-control" placeholder="Search for an icon..." style="margin: 10px 2px; min-width: 250px" id="search-for-icon"></div></form>').appendTo($container);
+            var $searchInput = $searchForm.find('input');
+            var $b = $('<ul/>').addClass(opts.class).appendTo($container);
+
+            var updateDisplay = function () {
+                $b.html('');
+                for(var n = 0; n < _this.finalOptions.length; n++) {
+                    var i = _this.finalOptions[n];
+                    var $iconContainer = $('<li/>', {class:"icon-container", title: i.name}).data('item', i).appendTo($b);
+                    var $li = $(i.html).appendTo($iconContainer);
+                    var $name = $('<span/>').html(i.name).appendTo($iconContainer);
+                    if(selectedItem == i) {
+                        $iconContainer.addClass('selected');
+                        selectedLi = $iconContainer;
+                    }
+                }
+
+                $b.find('>li').on('click', function(e) {
+                    var $li = $(e.delegateTarget);
+                    var item = $li.data('item');
+
+                    if(selectedLi) {
+                        selectedLi.removeClass('selected');
+                        selectedLi = null;
+                    }
+
+                    if(selectedItem == item) {
+                        selectedItem = null;
+                    } else {
+                        selectedItem = item;
+                        selectedLi = $li;
+                        $li.addClass('selected');
+                    }
+                    selectionDone();
+                    $d.modal('hide');
+                    e.preventDefault();
+                });
+            }
+            this.finalOptions = this.options;
+            updateDisplay();
+
+            var selectionDone = function() {
+                if(_this.getSelectedItem() != selectedItem) {
+                    if(!selectedItem) {
+                        _this.$input.val('');
+                    } else {
+                        _this.$input.val(selectedItem.key);
+                    }
+                    _this.paintVal();
+                    _this.$input.trigger('change');
+                }
+            }
+
+            var $d = makeModalDialog(this.opts.title, "Cancel", "Select", $container, function() {
+                //cancel
+            }, function() {
+                //ok
+                selectionDone();
+            });
+
+
+            $searchInput.keyup(function () {
+                if (!$searchInput.val()) {
+                    _this.finalOptions = _this.options;
+                }
+                else {
+                    _this.finalOptions = _this.options.filter(function(i) {
+                        if (i.name) return i.name.match($searchInput.val());
+                    });
+                }
+                updateDisplay();
+            });
+        }
+    }
+
+    $val.on('click', function(e) {
+        _this.$input.trigger('crsa-select-show');
+        _this.showSelect();
+        e.preventDefault();
+    });
 }
 
 function crsaIsFileUrl(url) {
@@ -107,6 +326,24 @@ function crsaGetBaseForUrl(url) {
     a.pop();
     return a.join('/');
 }
+
+function crsaGeneralCombineUrlWith(url, doc) {
+    if(doc.length == 0) return url;
+    while (doc.startsWith('../')) {
+      url = crsaGetBaseForUrl(url);
+      doc = doc.substr(3, doc.length);
+    }
+    if(doc.charAt(0) != '/') {
+        doc = '/' + doc;
+    }
+    return url + doc;
+}
+
+function crsaCombineUrlWith(url, doc) {
+    url = crsaGetBaseForUrl(url);
+    return crsaGeneralCombineUrlWith(url, doc);
+}
+
 
 function crsaGetAppDir() {
     if(isApp()) {
@@ -265,8 +502,8 @@ function getUniqueId(pref, page, prev) {
         prev = "" + prev;
         start = parseInt(prev.replace(/[a-z]*/i, ''));
     }
-    if(!page) page = service.getSelectedPage();
-    debugger;
+    if(!page) page = service.getSelectedCrsaPage();//sws//modify
+    
     var $html = page ? page.get$Html() : null;
     if(!pref) pref = 'crsa_id_';
     var c = prev ? start : gen_id_count;
@@ -742,7 +979,7 @@ function makeDialog(title, cancel, ok, body) {
     html += '</div>\
             </div>';
 
-    var $d = $('<div/>', {class: "modal-dialog crsa-dialog-nonmodal"}).html(html);
+    var $d = $('<div/>', {class: "modal-dialog crsa-dialog-nonmodal crsa-modal"}).html(html);
     if(typeof body == 'object') {
         $d.find('.modal-body').append(body);
     }
@@ -796,6 +1033,54 @@ function makeModalDialog(title, cancel, ok, body, onCancel, onOk, onBeforeShow) 
     if(onBeforeShow) onBeforeShow($o);
     $o.modal({backdrop: true});
     return $o;
+}
+
+function crsaQuickMessage(msg, duration, single, error) {
+    if(!duration) duration = 1500;
+    var top = 100;
+    var count = 0;
+
+    var quick_messages = $('.quick-message');
+
+    quick_messages.each(function(i,q) {
+        var $q = $(q);
+        var t = parseInt($q.css('top'));
+        if(top <= t) top = t + $q.outerHeight() + 0;
+        count++;
+    });
+
+    if(single && quick_messages.length > 0) return;
+
+    var spinner = '';
+    if(duration < 0) {
+        spinner = '<i class="fa fa-refresh fa-spin"></i>&nbsp;';
+    }
+
+    var $return = null;
+
+    (function() {
+        var $msg = $('<div/>', {class: 'quick-message' + (error ? ' quick-message-error' : '')}).html('<p>' + spinner + msg + '</p>').appendTo($('body')).css('opacity', 0).css('top', top + 'px');
+        $msg.animate({opacity:1}, error ? 100 : 250);
+
+        $msg.removeMessage = function() {
+
+            $msg.animate({opacity:0}, 500, function() {
+                $msg.remove();
+            });
+
+            setTimeout(function () {
+                $msg.remove();
+            }, 1000);
+        }
+        if(duration > 0) {
+            setTimeout(function () {
+                $msg.removeMessage();
+            }, duration);
+        }
+        $return = $msg;
+    })();
+
+    return $return;
 }
 
 var PgChooseFile = function(done, options) {
@@ -874,4 +1159,392 @@ function crsaGetNameFromUrl(url, def) {
     if(n.length == 0) n = (def || '');
     var a = n.split('?');
     return a.length > 1 ? a[0] : n;
+}
+
+var getUrlFromCssUrlValue = function(url) {
+    url = url.replace(/[\'\"]/g, '');
+    var m = url.match(/url\(([^\)]*)\)/i);
+    return m ? m[1] : url;
+}
+
+
+var setLightDarkClassForEditor = function($editor, theme) {
+    var dark = ['ambiance','blackboard','mbo','midnight','monokai'];
+    $editor.removeClass('dark-theme');
+    if(dark.indexOf(theme) >= 0) {
+        $editor.addClass('dark-theme');
+    }
+}
+function setDialogNotice($d, text, cls) {
+    var $p = $d.find('.modal-footer > p');
+    $p.html(text).attr('class','pull-left ' + cls);
+}
+var addTooltip = function($e, title) {
+    $e.tooltip({container: 'body', placement: 'auto', html : true, title: title, trigger: 'hover', delay:{ "show": 800, "hide": 100 }});
+    $e.on('mousedown', function(e) {
+        $e.tooltip('hide');
+    })
+    //$e.tooltip('show');
+}
+
+var pgWindowManager = function(win, name, no_prefs_func) {
+
+    var _this = this;
+    this.win = win;
+    this.name = name;
+
+    var getKey = function(key) {
+        return 'win_' + _this.name + '_' + screen.width + 'x' + screen.height + '_' + key;
+    }
+
+    var x = localStorage[getKey('x')] || null;
+    var y = localStorage[getKey('y')] || null;
+    var w = localStorage[getKey('w')] || null;
+    var h = localStorage[getKey('h')] || null;
+
+    //if(no_prefs_func) no_prefs_func(win);
+
+    //console.log('RESTORE WIN: ' + x + ', ' + y + ', ' + w + ', ' + h);
+
+    try {
+        var move = true;
+        if(x === null && y === null && w === null && h === null) {
+            if(no_prefs_func) no_prefs_func(win);
+        } else {
+            if(x !== null && y !== null) {
+                x = parseInt(x);
+                y = parseInt(y);
+                if(x < 0) x = 0;
+                if(y < 0) y = 0;
+                move = true;
+                //win.moveTo(x, y);
+            }
+            if(w !== null && h !== null) {
+                w = parseInt(w);
+                h = parseInt(h);
+                if(w < 400) w = 400;
+                if(h < 300) h = 300;
+
+                if(x + 100 > screen.width) {
+                    x = 0;
+                    w = screen.width - x;
+                    move = false;
+                }
+                if(y + 100 > screen.height) {
+                    y = 80;
+                    h = screen.height - y;
+                    move = false;
+                }
+                if(move) {
+                    win.moveTo(x, y);
+                    win.resizeTo(w, h);
+                } else {
+                    if(no_prefs_func) no_prefs_func(win);
+                }
+
+
+            }
+        }
+    } catch(err) {}
+
+    var save = function() {
+        //debugger;
+        if(_this.win.height > 100 && _this.win.x > -1000 && _this.win.y >= -20) {
+            localStorage[getKey('x')] = _this.win.x;
+            localStorage[getKey('y')] = _this.win.y;
+            localStorage[getKey('w')] = _this.win.width;
+            localStorage[getKey('h')] = _this.win.height;
+        }
+    }
+
+    win.on('move', function(x, y) {
+        save();
+    })
+
+    win.on('resize', function(w, h) {
+        save();
+    })
+
+    win.on('closed', function() {
+        win = null;
+        _this.win = null;
+    })
+}
+
+function showNotice(message, title, key, done, only_once, force) {
+    var key = 'notice_hide_' + key;
+    if(!force) {
+        if(key in localStorage && localStorage[key] == '1') {
+            if(done) done(false);
+            return;
+        }
+        if(only_once && key in localStorage) {
+            if(done) done(false);
+            return;
+        }
+    }
+    var $chk = $('<label class="pull-left control-label"><input type="checkbox"> Don\'t show this notice again</label>');
+
+    var onClose = function() {
+        if(done) done(true);
+        if($chk.find('input').is(':checked')) {
+            localStorage[key] = '1';
+        } else {
+            localStorage[key] = '0';
+        }
+    }
+
+    var $d = showAlert(message, title, null, null, onClose, onClose);
+    if(!only_once) {
+        $d.find('.modal-footer').prepend($chk);
+    }
+    return $d;
+}
+
+function showPrompt(notice, title, value, placeholder, onCancel, onOk) {
+    var $b = $('<form role="form">\
+        <div class="form-group">\
+        <label for="dlgInput">' + notice + '</label>\
+        <input type="text" class="form-control" id="dlgInput" placeholder="' + placeholder + '">\
+        </div>\
+        </form>');
+    var $input = $b.find('input');
+    var $form = $b;
+    $form.on('submit', function(e) {
+        e.preventDefault();
+        if(onOk) onOk($input.val());
+        $modal.modal('hide');
+    });
+    if(value) $input.val(value);
+    var $modal = showAlert($b, title, "Cancel", "Ok", onCancel, function() {
+        if(onOk) onOk($input.val());
+    });
+    $modal.on('shown.bs.modal', function() {
+        $input.focus();
+    })
+    return $modal;
+}
+
+
+
+function crsaGetInlineStylePropertyValue(style, prop, is_url) {
+    if(style) {
+        var re = new RegExp( escapeRegExp(prop) + '\\:\\s*' + (is_url ? 'url\\(([^\\)]*)\\)' : '([^\\;]*)') + '\\;?')
+        var m = style.match(re);
+        if(m) {
+            var url = m[1].replace(/['"]/g, '');
+            return url;
+        }
+    }
+    return null;
+}
+
+function crsaSetInlineStylePropertyValue(style, prop, value, is_url) {
+    style = style || '';
+    var re = new RegExp( escapeRegExp(prop) + '\\:\\s*' + (is_url ? 'url\\(([^\\)]*)\\)' : '([^\\;]*)') + '\\;?', 'g');
+    style = style.replace(re, '');
+    if(value) {
+        if(style.length && !style.endsWith(';')) style += ';';
+        style += prop + ':' + (is_url ? 'url(\'' + value + '\')' : value) + ';';
+    }
+    return style;
+}
+
+function crsaDuplicateName(orig_name, local_file, skip) {
+    var a = orig_name.split('.');
+    var i = a.length > 1 ? a.length - 2 : a.length-1;
+    var c = 0;
+    var found;
+    var name;
+    var localBase = local_file ? crsaGetFileDir(local_file) : null;
+    var fs = isApp() ? require('fs') : null;
+
+    do {
+        a[i] = a[i].replace(/\([0-9]+\)$/i, '');
+        a[i] = c == 0 ? a[i] : a[i] + '(' + c + ')';
+        name = a.join('.');
+        found = false;
+        if(skip) {
+            if(skip.indexOf(name) >= 0) found = true;
+        }
+        if(!found && fs && localBase) {
+            var newFile = localBase + name;
+            if(fs.existsSync(newFile)) {
+                found = true;
+            }
+        }
+        c++;
+    }
+    while(found);
+
+    return name;
+}
+
+var pgPageTabs = function($dest) {
+
+    var _this = this;
+    var list = [];
+
+    var $me = $('<div class="file-tabs"><ul></ul></div>');
+    var $me_ul = $me.find('ul');
+    var $lis;
+    var visible = false;
+
+    var show_tooltips = true;
+
+    $me.prependTo($dest).hide();
+
+    this.addPage = function(crsaPage) {
+        //debugger;
+        list.push(crsaPage);
+        updateDisplay();
+    }
+
+    this.removePage = function(crsaPage) {
+        var idx = list.indexOf(crsaPage);
+        list.splice(idx, 1);
+        var vis = null;
+        for(var n = 0; n < list.length; n++) {
+            if(list[n].visible) {
+                vis = true;
+                break;
+            }
+        }
+        if(!vis && list.length) {
+            showPage(list[0], 0);
+        }
+        updateDisplay();
+    }
+
+    this.updateDisplay = function() {
+        updateDisplay();
+    }
+
+    this.getHeight = function() {
+        return visible ? 39 : 0;
+    }
+
+    this.updateHasChangesStatus = function(cp) {
+        var has = cp.hasChanges() ? ' *' : '';
+        var $li = $me_ul.find('li[data-url="' + cp.url + '"]').each(function(i, li) {
+            $(li).find('>span').html(has);
+        })
+    }
+
+    var updateDisplay = function() {
+        $me_ul.html('');
+        for(var n = 0; n < list.length; n++) {
+            var cp = list[n];
+            var $li = $('<li data-url="' + cp.url + '">' + cp.tab_name + '<span>' + (cp.hasChanges() ? ' *' : '') + '</span></li>').appendTo($me_ul).data('page-index', n);
+            if(cp.visible) {
+                $li.addClass('active');
+            }
+            if(cp.live_update) {
+                $li.addClass('view');
+            }
+        }
+        $lis = $me_ul.find('li');
+
+        $lis.on('click', function(e) {
+            e.preventDefault();
+            var $li = $(e.delegateTarget);
+            var cp = list[$li.data('page-index')];
+
+            var multi = true;
+            if(!e.ctrlKey && !e.metaKey) {
+                multi = false;
+                hideAll(cp);
+
+                if(show_tooltips) {
+                    crsaQuickMessage('CMD/CTRL + Click to show multiple pages', 3000);
+                    show_tooltips = false;
+                }
+            }
+            if(multi && cp.visible) {
+                hidePage(cp);
+            } else {
+                showPage(cp);
+            }
+            if (!cp.rememberWidth) $.fn.crsapages('refresh');
+        })
+        var old_visible = visible;
+        if(list.length > 1) {
+            $me.show();
+            visible = true;
+        } else {
+            $me.hide();
+            visible = false;
+        }
+        if(old_visible != visible) {
+            $.fn.crsapages('refresh');
+        }
+    }
+
+    var showPage = function(crsaPage, idx) {
+        if(typeof idx == 'undefined') idx = list.indexOf(crsaPage);
+        if(!$lis) return;
+        var $li = $($lis.get(idx));
+        $li.addClass('active');
+        crsaPage.show();
+        //debugger;
+        var $selected_el = null;
+        if(crsaPage.selected_element_pgid) {
+            $selected_el = crsaPage.getElementWithPgId(crsaPage.selected_element_pgid);
+        }
+        pinegrow.selectElement($selected_el);
+        //crsaPage.treeRepaintOnShow = crsaPage.treeRepaintOnShow;
+        pinegrow.setSelectedPage(crsaPage);
+    }
+
+    var hidePage = function(crsaPage, idx) {
+        if(typeof idx == 'undefined') idx = list.indexOf(crsaPage);
+        if(!$lis) return;
+        var $li = $($lis.get(idx));
+        $li.removeClass('active');
+        crsaPage.hide();
+    }
+
+    var hideAll = function(except) {
+        for(var n = 0; n < list.length; n++) {
+            var cp = list[n];
+            if(cp != except) {
+                hidePage(cp, n);
+            }
+        }
+    }
+
+    this.showPage = function(crsaPage, hide_others) {
+        if(hide_others) {
+            hideAll(crsaPage);
+        }
+        showPage(crsaPage);
+        $.fn.crsapages('refresh');
+    }
+
+    this.hidePage = function(crsaPage) {
+        hidePage(crsaPage);
+        $.fn.crsapages('refresh');
+    }
+
+    this.hideAll = function() {
+        hideAll();
+        $.fn.crsapages('refresh');
+    }
+}
+
+var showDbLoadingOverlay = function() {
+    var $wfbpanel = $(".wfb-panel");
+    var $overlay = $wfbpanel.find(".db-loading-overlay");
+    console.log($wfbpanel);
+    console.log($overlay);
+    if ($overlay.length == 0) {
+        $wfbpanel.append(
+            "<div class=\"db-loading-overlay\">\
+                <div>\
+                    <i class=\"fa fa-spinner fa-pulse\"></i>\
+                    Loading db cridential, please wait...\
+                </div>\
+            </div>"
+        );
+    }
 }

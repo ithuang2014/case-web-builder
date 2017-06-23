@@ -13,6 +13,7 @@ var CrsaPage = function(not_interactive) {
 	this.uid = crsaPageUid++;
     this.load_source = null;
     this.undoSetFlag = false;
+    this.undoStack = new CrsaPageUndoStack(this);
     this.frameworks_added = false;
     this.frameworks = [];
     this.live_update = null;
@@ -22,14 +23,20 @@ var CrsaPage = function(not_interactive) {
     this.load_source = null;
     this.isWatchingFileForChanges = false;
     this.watchReloadDialog = null;
+    this.selected_element_pgid = null;
+
+    this.scrollMode = true; //crsaGetCustomLogic().scrollMode;
+    this.deviceWidth = 1024;
 
     this.currentFrameworkHandlerReturnValues={};
     
     this.crsaProjectTemplate = null;
 
-    // this.undoStack = new CrsaPageUndoStack(this);
     this.breakpoints = [];
     this.sourceNode = null;
+    this.$iframe = null;
+
+    this.javascriptEnabled = true;
 
     var codeEditor;
 
@@ -117,22 +124,22 @@ var CrsaPage = function(not_interactive) {
     }
 
     this.closePage = function(done) {
-        debugger;
         var ask = null;
 
         var ask_close_html = "This page has unsaved changes. Are you sure you want to close it?";
         var ask_close_css = "Stylesheets attached to this page have unsaved changes. Are you sure you want to proceed?";
 
         var askOnCloseDialog = function(ask, leave_css) {
+
             var $alert = showAlert(ask,  "Page has unsaved changes", "Cancel", "Save & Close", null, function() {
                 self.save(function() {
+                    methods.closePage(self, leave_css);
                     if (done) done();
-                    // method.closePage(this, leave_css);
                 }, true, true);
             })
             $('<a href="#" class="btn pull-left">Don\'t save</a>').appendTo($alert.find('.modal-footer')).on('click', function(e) {
                 e.preventDefault();
-                // method.closePage(this, leave_css);
+                methods.closePage(self, leave_css);
                 $alert.modal('hide');
                 if (done) done();
             });
@@ -141,14 +148,16 @@ var CrsaPage = function(not_interactive) {
         if(this.hasCssChanges()) {
             ask = ask_close_css;
         }
+
         if(this.changed && !this.force_close) {
             ask = ask_close_html;
         }
+
         if(ask) {
             askOnCloseDialog(ask);
         } else {
+            methods.closePage(this);
             if (done) done();
-            // methods.closePage(this);
         }
     }
 
@@ -163,6 +172,7 @@ var CrsaPage = function(not_interactive) {
                 has = has || cs.changed;
             });
         }
+
         return has;
     }
 
@@ -280,7 +290,6 @@ var CrsaPage = function(not_interactive) {
         var $dialog = makeDialog("Select media query", "Cancel", "Ok", $c).css('width','400px');
         $body.append($dialog);
 
-        // sws: blocked
         // $dialog.find('.modal-footer').prepend('<a href="#" class="pull-left manage btn btn-link">Manage breakpoints...</a>').css('margin-top', '0px');
 
         $dialog.find('.modal-body').css('padding-bottom', '0px');
@@ -463,6 +472,20 @@ var CrsaPage = function(not_interactive) {
         return tool;
     }
 
+    this.refresh = function(done) {
+        if(done) {
+            var onDone = function(page) {
+                done(page);
+                setTimeout(function() {
+                    pinegrow.removeEventHandler('on_page_shown_in_live_view', onDone);
+                }, 0);
+            }
+            pinegrow.addEventHandler('on_page_shown_in_live_view', onDone);
+        }
+        crsaQuickMessage("Refreshing page...", 1000);
+       wfbuilder.refreshPage(this);
+    }
+
     this.autoSize = function() {
         methods.autoSizePage(this.$iframe, this.scrollMode);
     }
@@ -486,7 +509,6 @@ var CrsaPage = function(not_interactive) {
         var $contents = this.$iframe.contents();
         var o = $contents.scrollTop();
 
-        //sws//block:
          $(this.getBody()).redraw();
         $contents.scrollTop(o);
         /*
@@ -570,7 +592,7 @@ var CrsaPage = function(not_interactive) {
     }
 
     this.setPageChanged = function(val, force) {
-
+        debugger;
         if(this.live_update && this.save_parent) val = false;
 
         if(this.changed != val || force) {
@@ -585,7 +607,7 @@ var CrsaPage = function(not_interactive) {
                     p.hide();
                 }
 
-                // service.pageTabs.updateHasChangesStatus(this);
+                service.pageTabs.updateHasChangesStatus(this);
             }
 
             // if(this.changed) {
@@ -602,7 +624,7 @@ var CrsaPage = function(not_interactive) {
         if(disable_js) this.javascriptEnabled = false;
         
         service.httpServer.setCurrentRequestContext(this.url, this.sourceNode);
-        var html = pgel.toStringWithIds(true, service.getFormatHtmlOptions()/*//sws//block://service.httpServer.createProxyUrlNodeOutputFilter*/);
+        var html = pgel.toStringWithIds(true, service.getFormatHtmlOptions(),service.httpServer.createProxyUrlNodeOutputFilter);
         this.javascriptEnabled = origjs;
         return html;
     }
@@ -678,7 +700,6 @@ var CrsaPage = function(not_interactive) {
 
     this.getCompatibleUrl = function(url) {
         if(crsaIsFileUrl(url)) {
-            // sws: blocked
             // if(service.sourceParser) {
                 url = service.httpServer.makeUrl(url);
             // }
@@ -697,6 +718,7 @@ var CrsaPage = function(not_interactive) {
     }
 
     this.addCrsaStyles = function() {
+        debugger;
         var o = {css: '.crsa-highlighted {\
             box-shadow: 0 0 10px rgba(0, 255, 0, 0.9) !important;\
         }\
@@ -749,7 +771,6 @@ var CrsaPage = function(not_interactive) {
             animation: none !important;\
         }';
 
-        // sws: blocked
         // this.callFrameworkHandler('on_set_inline_style', o);
 
         var css = '<style id="' + cssid + '">' + o.css + '</style>';
@@ -820,8 +841,18 @@ var CrsaPage = function(not_interactive) {
         $.each(service.getFrameworks(), function(key, f) {
             addFramework(f);
         });
+        
+        sortFrameworksByOrder();
 
         this.frameworks_added = true;
+    }
+
+    var sortFrameworksByOrder = function() {
+        self.frameworks = self.frameworks.sort(function (a, b) {
+            if (a.order > b.order) return 1;
+            if (a.order < b.order) return -1;
+            return 0;
+        });
     }
 
     this.getLibSections = function() {
@@ -881,6 +912,66 @@ var CrsaPage = function(not_interactive) {
     }
 
     this.watchFileOnFileChanged = function(curr, prev) {
+        //console.log('ccccccccc');
+        //return;
+        var fs = require('fs');
+
+        var updatePage = function(v) {
+            var ret = _this.applyChangesToSource(v, false, false, true);
+
+            if(ret.updated) {
+                crsaQuickMessage("Auto refreshed!");
+                if(ret.changes && ret.changes.length == 1) {
+                    var $el = _this.getElementWithPgId(ret.changes[0].changed.getId());
+                    if($el) {
+                        pinegrow.selectElement($el);
+                        pinegrow.scrollCanvasToElement($el);
+                    }
+                }
+            } else if(ret.changes && !ret.update) {
+                //whole document is changed
+                _this.refresh();
+            }
+            _this.setPageChanged(false);
+
+            _this.callFrameworkHandler('on_page_loaded_from_external');
+        }
+
+        if(curr.mtime > prev.mtime && !_this.live_update && pinegrow.getSetting('auto-reloading', '1') == '1') {
+            var ct = (new Date()).getTime();
+            if(ct - _this.lastSavedAt > 5000) {
+                console.log(_this.localFile + ' changed');
+
+                var code = fs.readFileSync(_this.localFile, {encoding: "utf8"});
+
+                pinegrow.codeEditors.isCodeForUrlSameInExternalEditor(_this.url, code, function(same) {
+
+                    if(_this.watchReloadDialog) {
+                        try {
+                            _this.watchReloadDialog.modal('hide');
+                            _this.watchReloadDialog = null;
+                        } catch(err) {}
+                    }
+
+                    if(same) return;
+
+                    if(_this.changed) {
+
+                        _this.watchReloadDialog = showAlert('<p><b>' + _this.name + '</b> was modified outside of Pinegrow. The file has unsaved changes. Do you want to reload it?</p><p><em>You can disable auto-reloading in Support -&gt; Settings.</em></p>',  "Unsaved file modified outside of Pinegrow", "Don't reload", "Reload", function() {
+                            _this.watchReloadDialog = null;
+                        }, function() {
+                            _this.watchReloadDialog = null;
+                            updatePage(code);
+                        });
+                    } else {
+                        updatePage(code);
+                    }
+                })
+
+            } else {
+               // console.log(_this.localFile + ' changed in PG');
+            }
+        }
     }
 
     this.watchFileForChanges = function() {
@@ -976,13 +1067,14 @@ var CrsaPage = function(not_interactive) {
 
                         var url = crsaMakeUrlFromFile(self.localFile);
                         if(url != self.url && crsaIsFileUrl(self.url)) self.rename(url);
-                        if(done) done(err);
 
                         if(save_html) {
                             self.setPageChanged(false);
                         }
+                        
+                        if(done) done(err);
 
-                        crsaQuickMessage("Page was saved sucessfully!", 2000);
+                        crsaQuickMessage(self.name + " was saved sucessfully!", 2000);
                     }
 
                     var isFile = crsaIsFileUrl(this.url);
@@ -1007,7 +1099,6 @@ var CrsaPage = function(not_interactive) {
                         var count = 0;
                         var fileWriter = null;
 
-                        // sws: blocked
                         // if(ask_css_overwrite) {
                         //     fileWriter = new CrsaOverwriteProtectionFileWriter('dummy_source', null);
                         //     fileWriter.use_export_cache = false;
@@ -1119,45 +1210,513 @@ var CrsaPage = function(not_interactive) {
         }
     }
 
+    this.duplicate = function() {
+        var cp = new CrsaPage();
+        cp.url = this.url;
+        cp.wrapper_url = this.wrapper_url;
+        cp.wrapper_selector = this.wrapper_selector;
+        cp.scrollMode = this.scrollMode;
+        cp.javascriptEnabled = this.javascriptEnabled;
+
+        cp.frameworks = this.frameworks.slice(0);
+        cp.frameworks_added = this.frameworks.length > 0;
+        // cp.frameworksChanged();
+
+        cp.breakpoints = this.breakpoints.slice(0);
+        var skip = [];
+        for(var j = 0; j < crsaPages.length; j++) {
+            skip.push(crsaPages[j].name);
+        }
+
+        cp.name = crsaDuplicateName(this.name, this.localFile, skip);
+        if(this.localFile) {
+            cp.setLocalFile(crsaGetFileDir(this.localFile) + cp.name);
+        }
+        return cp;
+    }
+
+    this.copyContentOfPage = function(crsaPage, skip_refresh) {
+
+        var ret = this.applyChangesToSource(crsaPage.sourceNode, false, true, service.getSelectedCrsaPage() == this);
+
+        if(ret.changes && !ret.updated && !skip_refresh) {
+            this.refresh();
+        }
+    }
+
+    this.updatePageMenus = function(crsaPage) {
+        var $page = this.$page;
+        var name = this.name;
+        var src = this.url;
+
+         
+        // var $code = $page.find('.edit-code');
+       
+        // // $code = $('<div/>', {class: 'edit-code btn-group'}).html('<button type="button" class="btn btn-link btn-xs"><i class="fa fa-code edit-code-icon"></i></button>').insertAfter($device);
+        // $code.on('click', function(e) {
+        //     e.preventDefault();
+        //     crsaPage.toggleEditCode();
+        // })
+        // addTooltip($code, 'Show/hide code editor');
+        
+
+                var openInBrowser = function(url) {
+                    var gui = require('nw.gui');
+                    var url = crsaPage.getPreviewUrl(true);
+
+                    if(url.indexOf('file://') == -10) {
+                        url = url.replace('file://', '');
+                        gui.Shell.openItem(url);
+                    } else {
+                        gui.Shell.openExternal(url);
+                    }
+                    pinegrow.showNotice('<p>The page was opened in your default browser. Click on <b>the link icon</b> next to Page -&gt; Preview in Browser to <b>copy the preview link to clipboard</b> from where you can use it to open the preview in any browser.</p><p>The preview link will work as long as the page is opened in Pinegrow.</p>', 'About the preview link', 'page-preview-link');
+                }
+
+             $('li.crsa-preview').attr('href', src).on('click', function(e) {
+                if(isApp){
+                        // if(!crsaPage.localFile) {
+                        //     service.showAlert('<p>After creating a new page, you have to <b>save the page</b> first, before using Preview in browser. After the page is saved on disk, you can use Preview in browser without saving the page.</p>', 'Page needs a home first');
+                        // } else {
+                            openInBrowser($(e.delegateTarget).attr('href'));
+                        // }
+                        e.preventDefault();
+                   }
+                });
+
+               
+   }
+
+    this.toggleEditCode = function() {
+        if(service.codeEditor.isInEdit(this.$iframe)) {
+            service.codeEditor.exitEdit(false);
+        } else {
+            this.editCode();
+        }
+    }
+
+    this.editCode = function() {
+        wfbuilder.editCode(this.$iframe);
+    }
+
+    this.applyChangesToSource = function(html_or_node, abort_on_errors, skip_was_changed, update_stylesheets, event_type) {
+        /* returns
+            true - updated
+            array - errors
+            false - whole doc changed, not updated
+            previewUpdated
+         */
+        var ret = {changes: null, errors: null, updated: false, stylesheets_changed: false, scripts_changed: false, whole_changed: false};
+
+        var rootNode;
+        var clone = false;
+
+        var parser = null;
+
+        if(this.onlyCode) {
+            var code = typeof html_or_node == 'string' ? html_or_node : html_or_node.toStringOriginal(true);
+            if(code != this.code) {
+                this.code = code;
+                this.setPageChanged(true);
+            }
+            ret.updated = true;
+            return ret;
+        }
+
+        if(typeof html_or_node == 'string') {
+            parser = new pgParser();
+            parser.assignIds = false;
+            parser.parse(html_or_node);
+            rootNode = parser.rootNode;
+        } else {
+            rootNode = html_or_node;
+            clone = true;
+        }
+
+        ret.errors = rootNode.validateTree();
+        if(ret.errors.length && abort_on_errors) {
+            //debugger;
+            //console.log('ERRORS');
+            //console.log(ret.errors);
+            return ret;
+        }
+
+        var changes = pgFindChangedNodesInPage(this.sourceNode, rootNode);
+        ret.changes = changes;
+
+        var $update_els = $([]);
+
+        var done = false;
+        var stylesheets_changed = false;
+
+        var css_tags = ['style', 'html', 'head'];
+
+        if(changes.length && this.openedInEditor) {
+            service.httpServer.setCurrentRequestContext(this.url, rootNode);
+
+            var whole = false;
+            for(var i = 0; i < changes.length; i++) {
+                var ch = changes[i];
+                if(ch.original.parent == null) {
+                    whole = true;
+                    ret.whole_changed = true;
+                    break;
+                }
+            }
+            if(!whole) {
+                for(var i = 0; i < changes.length; i++) {
+                    var ch = changes[i];
+
+                    var pgid = ch.original.getId();
+
+                    var $el = this.getElementWithPgId(pgid);
+
+                    if(clone) {
+                        ch.changed = ch.changed.clone(true);
+                    }
+                    ch.changed.assignIdAndAddToCatalog(true);
+                    ch.original.replaceWith(ch.changed);
+
+                    if(css_tags.indexOf(ch.original.tagName) >= 0 || css_tags.indexOf(ch.changed.tagName) >= 0 ||
+                        (ch.original.tagName == 'link' && ch.original.getAttr('rel') == 'stylesheet') ||
+                        (ch.changed.tagName == 'link' && ch.changed.getAttr('rel') == 'stylesheet')) {
+
+                        stylesheets_changed = true;
+                    }
+                    if(ch.original.tagName == 'script' || ch.changed.tagName == 'script') {
+                        ret.scripts_changed = true;
+                    }
+
+                    if($el) {
+                        var tree_id = $el.attr('data-pg-tree-id');
+                        var str = ch.changed.toStringWithIds(true, null, service.httpServer.createProxyUrlNodeOutputFilter);
+                        $el.get(0).outerHTML = str;
+
+                        var $el = this.getElementWithPgId(ch.changed.getId());
+
+                        if(/* tree_id && */ $el) {
+                            // $el.attr('data-pg-tree-id', tree_id);
+                            $update_els = $update_els.add($el.get(0));
+                        }
+
+                    }
+                    done = true;
+                }
+            }
+            if(done) {
+                if($update_els.length && this == service.getSelectedCrsaPage() && this.openedInEditor) {
+                    wfbuilder.updateStructureAndWireAllElemets(this.$iframe, $update_els, true);
+                }
+
+                if(stylesheets_changed && update_stylesheets) {
+                    _this.updateStylesheetsList();
+                }
+                this.setPageChanged(true);
+                if(!skip_was_changed && this.openedInEditor) {
+                    didMakeChange(this.$iframe, null, null, null, event_type);
+                }
+                ret.updated = true;
+                ret.stylesheets_changed = stylesheets_changed;
+                return ret;
+            }
+        } else {
+            //console.log('no changes');
+            ret.updated = true;
+            return ret;
+        }
+        this.sourceNode.remove();
+        this.sourceNode = clone ? rootNode.clone(true) : rootNode;
+        this.sourceNode.assignIdAndAddToCatalog(true);
+        //console.log('whole document is changed.');
+        //this.refresh();
+        return ret;
+    }
+
+     this.getSource = function(full_source, skip_beautify) {
+
+        var addHtml = function(src) {
+            var h = '<html';
+            $.each(getIframeHtmlElement(_this.$iframe.get(0)).attributes, function(idx, attr) {
+                h += ' ' + attr.nodeName + '="' + attr.nodeValue + '"';
+            });
+            h += '>';
+
+            return "<!DOCTYPE html>\n" + h + "\n" + src + "\n</html>";
+        }
+
+        var str;
+
+        if(this.sourceNode) {
+            //console.log(this.sourceNode.toDebug());
+
+            str = this.sourceNode.toStringOriginal(true, service.getFormatHtmlOptions());
+            //console.log(str);
+
+            //console.log(this.sourceNode.toStringWithIds());
+
+            if(!skip_beautify) {
+                //str = html_beautify(str);
+            }
+        } else {
+            this.doWithoutCrsaStyles(function() {
+
+                var doc = _this.getDocument();
+                var $html = $(doc).find('> html').clone(true);
+
+                _this.callFrameworkHandler('on_get_source', $html);
+
+                str = $html.length > 0 ? $html[0].innerHTML : '';
+                str = str.replace(/(<[^>]*)\s*contenteditable="true"/ig, '$1');
+                str = str.replace(/(<[^>]*)\s*style=""/ig, '$1');
+                str = removeCrsaClassesFromHtml(str);
+
+            });
+            if(full_source) {
+                str = addHtml(str);
+                if(!skip_beautify) {
+                    str = html_beautify(str);
+                }
+                return this.template.getTemplateSource(str);
+            }
+        }
+        return str;
+    }
+
+     this.showInExternalWindow = function() {
+        var gui = require('nw.gui');
+
+        this.externalWindow = gui.Window.open('empty.html', {
+            focus: true
+        });
+
+        this.externalWindow.on('close', function () {
+            _this.externalWindow.close(true);
+            _this.externalWindow = null;
+        });
+        this.externalWindow.setAlwaysOnTop(true);
+
+        var loaded = false;
+        this.externalWindow.on('loaded', function() {
+            if(!loaded) {
+                //debugger;
+                _this.allowReload = true;
+                var $win_body = $(_this.externalWindow.window.document.body);
+                _this.$page.appendTo($win_body.find('#win-content'));
+                loaded = true;
+            }
+        });
+    }
+
+    this.setSyntaxErrorIndicator = function(has_errors, fileNode, project) {
+        if(has_errors) {
+            //this.setFileNodeTag(new CrsaFileTag('syntax', 'danger', 'The page has HTML syntax errors. Right-click -&gt; Validate HTML for info.', 'code'), fileNode, project);
+        } else {
+            //this.removeFileNodeTag('syntax', fileNode, project);
+        }
+    }
+
+    this.makeAbsoluteUrl = function(relative_url) {
+        if(crsaIsAbsoluteUrl(relative_url)) return relative_url;
+        return require('url').resolve(this.url, relative_url);
+        //return crsaGetBaseForUrl(this.url) + '/' + relative_url;
+    }
+
+    this.hasChanges = function() {
+        return this.changed || (!this.onlyCode && this.hasCssChanges());
+    }
+
+    this.setSource = function(html, done, no_init, skip_dom_update) {
+
+        var parser = new pgParser();
+        parser.parse(html, function() {
+            this.sourceNode = parser.rootNode;
+            var htmlNodes = parser.rootNode.find('>html');
+            if(htmlNodes && htmlNodes.length) {
+                var htmlCode = htmlNodes[0].html(null, true);
+
+                var doc = getIframeDocument(_this.$iframe.get(0));
+                var $html = $(doc).find('> html');
+
+                $html[0].innerHTML = htmlCode;
+
+                var attributes = $.map($html[0].attributes, function(item) {
+                    return item.name;
+                });
+                $.each(attributes, function(i, item) {
+                    $html.removeAttr(item);
+                });
+
+                var attrs = htmlNodes[0].getAttrList();
+                for(var i = 0; i < attrs.length; i++) {
+                    $html.attr(attrs[i].name, attrs[i].value);
+                }
+
+                if(!no_init) {
+                    setTimeout(function() {
+                        $.fn.crsacss('loadLessStyles', _this.$iframe.get(0), function() {
+                            $.fn.crsa('updateStructureAndWireAllElemets', _this.$iframe);
+                            $('body').trigger('crsa-stylesheets-changed');
+                            this.addCrsaStyles();
+                            if(done) done();
+                        });
+                    }, 500);
+                } else {
+                    if(done) done();
+                }
+            } else {
+                if(done) done();
+            }
+        });
+    }
+
+    this.setJavascriptEnabled = function(value) {
+        if(this.javascriptEnabled != value) {
+            this.javascriptEnabled = value;
+            //pinegrow.setSetting('javascript-enabled', value ? '1' : '0');
+            this.refresh();
+        }
+    }
+
+    this.stopAnimations = function() {
+        var $html = $(getIframeHtmlElement(this.$iframe.get(0)));
+        $html.addClass('crsa-stop-animations');
+        this.animationsStopped = true;
+    }
+
+    this.startAnimations = function() {
+        var $html = $(getIframeHtmlElement(this.$iframe.get(0)));
+        $html.removeClass('crsa-stop-animations');
+        this.animationsStopped = false;
+    }
+
+    this.hasStoppedAnimations = function() {
+        var $html = $(getIframeHtmlElement(this.$iframe.get(0)));
+        return $html.hasClass('crsa-stop-animations');
+    }
+
+    this.getViewInnerHTMLForElement = function(pgel, disable_js) {
+        disable_js = true;
+        var origjs = this.javascriptEnabled;
+        if(disable_js) this.javascriptEnabled = false;
+        service.httpServer.setCurrentRequestContext(this.url, this.sourceNode);
+        var html = pgel.toStringWithIds(true, service.getFormatHtmlOptions(), service.httpServer.createProxyUrlNodeOutputFilter, true);
+        this.javascriptEnabled = origjs;
+        return html;
+    }
+
+    this.getPreviewUrl = function(noids) {
+        var url = crsaMakeUrlAbsolute(this.url);
+
+        var a = ['pgid=' + this.uid, 'pglive=1'];
+        if(noids) a.push('pgnoids=1');
+
+        //url += 'pgid=' + this.uid + '&pglive=1';
+        url = crsaAppendQueryToUrl(url, a);
+        url = service.getProxyUrl(url);
+
+        return url;
+    }
 }
+
+
+$.fn.crsapages = function( method ) {
+
+    //var opts = $.extend( {}, $.fn.hilight.defaults, options );
+    if ( methods[method] ) {
+        return methods[method].apply( this, Array.prototype.slice.call( arguments, 1 ));
+    } else if ( typeof method === 'object' || ! method ) {
+        return methods.init.apply( this, arguments );
+    } else {
+        $.error( 'Method ' +  method + ' does not exist on jQuery.crsacss' );
+    }
+};
+
 
 var crsaPages = [];
 var pages = null;
 var currentZoom = 1;
+var centerLeft = 300;
+var centerRight = 300;
+var fitZoom = true;
+
+var maxPageWidth = 3000;
+var minPageWidth = 200;
 
 var methods = {
 	addPage : function(srcUrl, loadedFunc, providedCrsaPage, onLoadCanceled, options) {
         var name = getPageName(srcUrl);
+        if (providedCrsaPage) {
+            name = providedCrsaPage.name;
+        }
 
         var self = this;
+        var crsaPage;
 
 		var new_page = {
 			crsaPage: ko.observable(null),
-			name: name,
+			name: ko.observable(name),
 			active: ko.observable(true),
+            visible: ko.observable(true),
 			state: {
                 changed: ko.observable(true),
 				width: ko.observable(1024),
-				t_m: ko.observable(true),
+                custom_width: ko.observable(1024),
+				t_m: ko.observable(false),
 				js_en: ko.observable(true),
 				css_en: ko.observable(true)
 			}
 		};
 		var ss_id = cv_h.opened_files.subscribe(function(value) {
             ss_id.dispose();
+
+            if (cv_h.opened_files().length > 1)
+                cv_h.opened_files()[cv_h.active_file()].active(false);
+
+            cv_h.active_file(cv_h.opened_files().length - 1);
+            cv_h.opened_files()[cv_h.active_file()].active(true);
+
 			tmpFunc();
 		});
 		cv_h.opened_files.push(new_page);
-		cv_h.active_file(cv_h.opened_files().length - 1);
+        
+        new_page.state.t_m.subscribe(function(value) {
+            if(value){
+              selectElement(null);
+              wfbuilder.highlightElement(null);
+              crsaQuickMessage("You can also use SHIFT + CLICK to test clicks.", 3000);
+                }
+        });
+        new_page.state.js_en.subscribe(function(value) {
+            if(cv_h.opened_files()[cv_h.active_file()].state.js_en()) {
+                crsaPage.setJavascriptEnabled(true);
+                crsaQuickMessage("JavaScript enabled.", 3000);
+            } else {
+                crsaPage.setJavascriptEnabled(false);
+                crsaQuickMessage("JavaScript disabled.", 3000);
+            }
+            event.preventDefault();
+        });
+        new_page.state.css_en.subscribe(function(value) {
+            if(crsaPage.hasStoppedAnimations()) {
+                crsaPage.startAnimations();
+                crsaQuickMessage("CSS Animations resumed.", 2000);
+            } else {
+                crsaPage.stopAnimations();
+                crsaQuickMessage("CSS Animations stopped.", 2000);
+            }
+            event.preventDefault();
+        });
 
 		var tmpFunc = function() {
-			tt_h.current_title(cv_h.opened_files()[cv_h.active_file()].name + " - ");
-
+			// tt_h.current_title(cv_h.opened_files()[cv_h.active_file()].name() + " - ");
 	        var $page = $("div.page.active");
 	        var $content = $page.find("div.content");
 	        var $iframe = $content.find("iframe");
 
-	        var crsaPage;
+            $page.on("click", function(event) {
+                wfbuilder.setSelectedPage($iframe);
+            });
+
 	        if (!providedCrsaPage) {
 	        	crsaPage = new CrsaPage();
 	        	crsaPage.name = name;
@@ -1170,6 +1729,7 @@ var methods = {
 	        crsaPage.$page = $page;
 	        crsaPage.$iframe = $iframe;
 	        crsaPage.$iframe.data('crsa-page', crsaPage);
+            crsaPage.$iframe.data('crsa-kopage', new_page);
 
             crsaPage.setPageChanged(false, true);
 
@@ -1180,31 +1740,28 @@ var methods = {
 	        	if (loadedFunc) loadedFunc(a, b);
 	        }, onLoadCanceled);
 
-            var updatePagesList = function($el) {
-                $el.each(function(i,e){
-                    pages = $(e).find('div.page');
-                });
-            }
+            crsaPage.updatePageMenus(crsaPage);
 
             updatePagesList($(".canvas"));
+
+            methods.refresh();
+            methods.addResizingOption($page);
 	    }
 	},
 	reloadPage : function(crsaPage, done, onCancel, refresh) {
         if(!refresh) crsaPage.loadingStart(onCancel);
         // else done();
-
+        debugger;
         var onPageLoaded = function() {
             var page_loaded_called = false;
-
             if(crsaPage.load_source) {
                 page_loaded_called = true;
                 crsaPage.setSource(crsaPage.load_source, null, true);
                 crsaPage.load_source = null;
-                // sws: blocked
-                // crsaPage.runScripts(function() {
-                //     crsaPage.callFrameworkHandler('on_page_loaded');
-                //     $.fn.crsa('updateIfNeeded');
-                // });
+                crsaPage.runScripts(function() {
+                    crsaPage.callFrameworkHandler('on_page_loaded');
+                    $.fn.crsa('updateIfNeeded');
+                });
             }
 
             crsaPage.loaded = true;
@@ -1233,6 +1790,12 @@ var methods = {
             }
 
             crsaPage.addCrsaStyles();
+
+             if(crsaPage.animationsStopped) {
+                    crsaPage.stopAnimations();
+                } else {
+                    crsaPage.startAnimations();
+                }
             crsaPage.allowReload = false;
 
             $(crsaPage.getDocument()).off('click.crsa').on('click.crsa', function() {
@@ -1245,9 +1808,9 @@ var methods = {
         		crsaPage.$iframe.off('load').on('load', function(event) {
         			console.log("iframe load");
         			if (!exists) {
-                        // crsaPage.setSource('<head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"></head><body><p>Document can not be read.</p></body>', null, false);
-                        alert('The file ' + crsaPage.url + ' could not be read.');
-        			}
+                        crsaPage.setSource('<head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"></head><body><p>Document can not be read.</p></body>', null, false);
+                        service.showAlert('<p>The file <code>' + crsaPage.url + '</code> could not be read. The error reported was <b>' + error + '</b>.</p><p>Reasons for the file not being found could be:</p><ul><li>Pinegrow doesn\'t have permissions to access the file.</li><li>The file is located on a network share with strange access path (tell us if that\'s the case)</li><li>Using <b>semicolons ;</b>, <b>?</b> or <b>#</b> in file path is not supported.</li></ul>', 'File was not found');
+                         }
                     onPageLoaded();
         		});
         	} else {
@@ -1270,7 +1833,6 @@ var methods = {
             if(refresh) args.push('pglive=1');
 
             var url_to_load = crsaPage.wrapper_url || crsaPage.url;//partials
-
             pgurl = crsaPage.getCompatibleUrl(url_to_load);
             pgurl = crsaAppendQueryToUrl(pgurl, args);
 
@@ -1288,6 +1850,58 @@ var methods = {
             doWithExists(true);
         }
 	},
+    refresh : function() {
+        //debugger;
+        var cw = 0;
+        var $code = $("#textedit");
+        if($code.is(':visible')) {
+            cw = $code.width() + 5;
+        }
+        //methods.centerPages($('#crsa-left-plane').is(':visible') ? centerLeft : 10, ($('#crsa-tree').is(':visible') ? $('#crsa-tree').width() : 10) + cw);
+
+        // sws: blocked
+        // methods.centerPages(centerLeft, centerRight);
+
+        if(fitZoom) {
+            methods.zoom(getFitZoomScale());
+        } else {
+            methods.zoom(currentZoom);
+        }
+    },
+    zoom : function(zoom) {
+        var $pages = pages.find('> div.content');
+        var $iframes = pages.find('iframe');
+        var min = minPageWidth;
+
+        currentZoom = zoom;
+       // methods.centerPages(centerLeft, $('#crsa-tree').width());
+
+        $pages.each(function(i,e) {
+            var $e = $(e);
+
+            var $if = $e.find('iframe');
+            var cp = getCrsaPageForIframe($if);
+
+            w = cp.deviceWidth;
+
+            //.css('height', '') leave it out
+            $if.css('width',w + 'px').css('transform','scale(' + zoom + ', ' + zoom + ')').css('transform-origin', '0 0');
+
+            sizePage($if, zoom, cp.scrollMode, w);
+
+             /*
+            var h = Math.ceil($if[0].contentWindow.document.body.scrollHeight * 1.05);
+            $if.css('height', h + 'px');
+
+
+            $e.css('width', cw + 'px').css('height', Math.ceil(h * zoom) + 'px' );
+            */
+            $if.data('zoom', zoom);
+        });
+        repositionSelectedElementMenu();
+        //$.fn.crsa('refreshSelectElement'); maybe dont need this
+        return this;
+    },
 	showLoadingOverlay: function($p, hide, onCancel) {
         var $if = $p.find('.content-iframe');
         var $c = $p.find('.content');
@@ -1356,7 +1970,6 @@ var methods = {
         })
     },
     showOverlays : function(hide) {
-        debugger;
         pages.each(function(i,p) {
             var $p = $(p);
             var $if = $p.find('.content-iframe');
@@ -1373,20 +1986,165 @@ var methods = {
     },
     autoSizePage : function($if, scroll_mode) {
         sizePage($if, currentZoom, scroll_mode);
+    },
+    closePage: function(crsaPage, leave_css) {
+        var $page = crsaPage.$page;
+        var $iframe = $page.find('iframe');
+        var $canvas = $('div.canvas');
+        //sws//block: methods.updateFilesName(crsaPage);
+
+        $page.trigger('crsa-page-closed', crsaPage);
+
+        var ps = getCrsaPageStylesForPage($iframe);
+
+        if(ps && !leave_css) {
+            ps.removeAllExclusiveSheets();
+        }
+        var idx = crsaPages.indexOf(crsaPage);
+        if(idx >= 0) crsaPages.splice(idx, 1);
+
+        for(var i = 0; i < crsaPages.length; i++) {
+            if(crsaPages[i].live_update == crsaPage) {
+                crsaPages[i].setLiveUpdate(null);
+            }
+        }
+        //sws//block: crsaPage.onClose();
+
+        $page.remove();
+
+        cv_h.opened_files.splice(cv_h.active_file(), 1);
+        updatePagesList($canvas);
+
+        service.httpServer.releaseRequestContextForPage(crsaPage);
+        $('body').trigger('crsa-stylesheets-changed');
+        $canvas.trigger('crsa-page-closed-removed', crsaPage);
+    },
+    clearUndoSetFlag : function() {
+        $.each(crsaPages, function(i,p) {
+            p.undoSetFlag = false;
+        })
+    },
+    addResizingOption: function ($page) {
+        var $sizeNotice;
+        var $overlay = $page.find('> .resizer-overlay');
+        var $canvas = $('.canvas');
+        var $content = $page.find('> .content');
+        var $iframe = $page.find('iframe');
+
+        if (!$overlay.length)
+            $overlay = $('<div/>', {class:"resizer-overlay"}).appendTo($page);
+
+        var $resizer = $('<div/>', {class: 'canvas-resizer'}).appendTo($page)
+        .on('mousedown', function(e) {
+            $overlay.show();
+
+            $sizeNotice = $('<div class="quick-message page-size-notice" style="display:none;"><p>Width: <span>0</span>px</p></div>').appendTo($('body'));
+            var $sizeInNotice = $sizeNotice.find('> p > span');
+            $sizeNotice.fadeIn();
+
+            var startRight = e.pageX;
+            var startContentWidth = $content.width();
+            var startIframeWidth = $iframe.width() * $.fn.crsapages('getZoom');
+
+            $sizeInNotice.html($iframe.width());
+
+            $overlay.css('width', startContentWidth + 50 + 'px');
+            $overlay.css('height', $content.height() + 'px');
+
+            e.preventDefault();
+
+            $('body')
+                .on('mousemove.editResizer', function(m) {
+                    var right = m.pageX;
+
+                    var ContentWidth = Math.max(minPageWidth, startContentWidth - (startRight - right));
+                    $content.css('width', ContentWidth + 'px');
+                    $overlay.css('width', ContentWidth + 'px');
+
+                    $iframe.css('width', (Math.ceil(ContentWidth / $.fn.crsapages('getZoom'))) + 'px');
+                    $content.parent().css('width', ContentWidth + 10 + 'px');
+
+                    $sizeInNotice.html($iframe.width());
+                })
+                .on('mouseup.editResizer', function(e) {
+                    e.preventDefault();
+                    $overlay.hide();
+
+                    $sizeNotice = $('.page-size-notice');
+                    $sizeNotice.fadeOut(function () {
+                        $sizeNotice.remove()
+                    });
+
+                    var selectedPage = service.getSelectedCrsaPage();
+                    selectedPage.deviceWidth = Math.min(maxPageWidth, $iframe.width());
+                    // methods.showDeviceValue(selectedPage);
+
+                    var kopage = $iframe.data("crsa-kopage");
+                    kopage.state.custom_width(selectedPage.deviceWidth);
+                    kopage.state.width(selectedPage.deviceWidth);
+
+                    selectedPage.custom_width = selectedPage.deviceWidth;
+                    $('body').trigger('crsa-breakpoints-changed');
+
+                    if ($page.width() > $canvas.width() || $content.width() < minPageWidth) {
+                        methods.refresh();
+                    }
+
+                    selectedPage.rememberWidth = true;
+                    $('body').off('.editResizer');
+                    // pinegrow.stats.using('edit.pageresizer');
+                });
+        }).css('top', 0);
     }
+
+    
+
+
+}
+
+var updatePagesList = function($el) {
+
+    $el.each(function(i,e){
+        pages = $(e).find('div.page');
+    });
+
+    // if(pages.length == 0 && !service.getCurrentProject()) {
+    //     $empty.show();
+    //     //sws//pinegrow.statusBar.$element.hide();
+    //     //sws// alignEmptyCanvas();
+    //     if(!service.getCurrentProject()) {
+    //         // $('#crsa-left-plane').hide();
+    //         // $('#crsa-tree').hide();
+    //         $(window).trigger('resize');
+    //     }
+    //     //pinegrow.hideLeftPanel();
+    // } else {
+    //     $empty.hide();
+
+    //    // if(panels_hidden) {
+    //         $(window).trigger('resize');
+    //     //pinegrow.statusBar.$element.show();
+    //    // }
+    // }
+    // $(window).trigger('resize');
+    methods.refresh();
 }
 
 var sizePage = function($if, zoom, scroll_mode, w) {
-    return;//sws//temp
+    w = Math.min(maxPageWidth, w);
     var $e = $if.closest('.content');
     if(!w) w = $if.width();
     var cw = Math.ceil(w * zoom);
+    var min = minPageWidth;
+    cw = Math.ceil(w * zoom) < min ? min : Math.ceil(w * zoom);
     //$if.css('height', ''); disable scroll_mode
     var h;
     var eh;
     var $canvas = $('div.canvas');
     if(scroll_mode) {
-        var bh = /*$body.height() - 90 */ $canvas.height() - 50 - $.fn.crsa('getPageTabs').getHeight() - 40/* //sws// service.statusBar.getHeight()*/ /* status bar */;
+        var bh = /*$body.height() - 90 */ $canvas.height() - 40;
+        if (cv_h.opened_files().length > 1)
+            bh -= $(".canvas-tab").height(); //sws// - pinegrow.statusBar.getHeight() /* status bar */;
         h = bh / zoom;
         eh = bh;
     } else {
@@ -1397,9 +2155,56 @@ var sizePage = function($if, zoom, scroll_mode, w) {
     $e.css('width', cw + 'px').css('height', eh + 'px' );
 
     var $p = $e.parent();
+    $p.css('width', cw + 10 + 'px');
     if(cw < 225) {
         $p.addClass('narrow');
     } else {
         $p.removeClass('narrow');
     }
+
 }
+
+var getFitZoomScale = function() {
+    var spc = 5;
+    var w = 0,
+    sw = spc;
+
+    $.each(cv_h.opened_files(), function(i,op) {
+        if(op.visible()) {
+            w += op.crsaPage().deviceWidth;
+            sw += spc;
+        }
+    });
+    var space = $('div.canvas').width();// - 12;// - centerLeft - centerRight;
+    //console.log('fit ' + w + ' ' + space);
+    var z = (space - sw) / w;
+    var min = minPageWidth;//230;//214;
+
+    w = 0;
+    sw = spc;
+    do {
+        var all_min = true;
+        var len = sw;
+        $.each(cv_h.opened_files(), function(i,op) {
+            if(op.visible()) {
+                if(op.crsaPage().deviceWidth * z < min) {
+                    len += min;
+                } else {
+                    len += op.crsaPage().deviceWidth * z;
+                    all_min = false;
+                }
+                len += spc;
+            }
+        });
+        if(len > space) z = z * 0.98;
+    } while(!all_min && len > space);
+
+    if(z > 1.0) z = 1.0;
+    return z;
+}
+
+  function getIframeHtmlElement(iframe) {
+        var doc = iframe.contentDocument || iframe.contentWindow.document;
+        var head  = doc.getElementsByTagName('html')[0];
+        return head;
+    }

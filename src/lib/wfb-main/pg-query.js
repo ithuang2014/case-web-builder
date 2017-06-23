@@ -268,7 +268,7 @@ function pgDescribeDynamicDiffs(p) {
         return str;
     });
 
-    s = pinegrow.formatHtml(s);
+    s = service.formatHtml(s);
     s = escapeHtmlCode(s).replace(/_###/g, '<').replace(/###_/g, '>');
     return s;
 }
@@ -294,6 +294,8 @@ function pgInsertNodeAtDOMElementLocation(node, $el) {
         }
 
     } else {
+        console.log($prev);
+        console.log($el);
         var pgPrev = getElementPgNode($prev);
         if(!pgPrev) return false;
         node.insertAfter(pgPrev);
@@ -520,13 +522,13 @@ pgQuery.prototype.getInlineStylePropertyValue = function(prop, is_url) {
 }
 
 pgQuery.prototype.setInlineStylePropertyValue = function(prop, value, is_url) {
-    var dom_value = is_url ? pinegrow.getProxyUrl(value) : value;
+    var dom_value = is_url ? service.getProxyUrl(value) : value;
     for(var i = 0; i < this.list.length; i++) {
         this.requireNode(this.list[i]);
 
         this.list[i].pgel.setInlineStylePropertyValue(prop, value, is_url);
 
-        var dom_value = is_url ? pinegrow.getProxyUrl(value) : value;
+        var dom_value = is_url ? service.getProxyUrl(value) : value;
         var dom_style = crsaSetInlineStylePropertyValue(this.list[i].el.getAttribute('style'), prop, dom_value, is_url);
         if(dom_style) {
             this.list[i].el.setAttribute('style', dom_style);

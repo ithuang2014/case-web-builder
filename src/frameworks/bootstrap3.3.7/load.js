@@ -641,7 +641,7 @@
                                 for(var m = 0; m < sizes.length; m++) {
                                     $td = $("<td/>").appendTo($row);
                                     var field = 'responsive-' + sizes[m];
-                                    $.fn.crsa("addInputField", $td, obj, field, createResponsiveSelect(sizes[m]), values, false, $scrollParent);
+                                    wfbuilder.addInputField($td, obj, field, createResponsiveSelect(sizes[m]), values, false, $scrollParent);
                                 }
                             }
                         }
@@ -948,7 +948,7 @@
                                         $td = $("<td/>").appendTo($row);
 
                                         var field = field_keys[n] + sizes[m];
-                                        $.fn.crsa("addInputField", $td, obj, field, createColumnSpans(field_names[n], "col-" + sizes[m] + fields[n], true, fields[n] == '' ? 1 : 0), values, false, $scrollParent);
+                                        wfbuilder.addInputField($td, obj, field, createColumnSpans(field_names[n], "col-" + sizes[m] + fields[n], true, fields[n] == '' ? 1 : 0), values, false, $scrollParent);
                                     }
                                 }
                             }
@@ -1037,8 +1037,8 @@
                                     var newpgel = pgel.replaceTag(value);
                                     var $newel = $(newpgel.get(0).el);
                                     obj.data = $newel;
-                                    $.fn.crsa('setNeedsUpdate', false, $p);
-                                    $.fn.crsa('setSelectElementOnUpdate', $newel);
+                                    wfbuilder.setNeedsUpdate(false, $p);
+                                    wfbuilder.setSelectElementOnUpdate($newel);
                                     return value;
                                 }
                             }
@@ -1199,7 +1199,7 @@
                                 }
                                 setTimeout(function() {
                                     //wait for source set_value cycle to complete and commit before updating
-                                    $.fn.crsa('setSelectedElementProperty', 'citation', citation);
+                                    wfbuilder.setSelectedElementProperty('citation', citation);
                                 }, 100);
                                 return value;
                             }
@@ -1541,7 +1541,7 @@
 
                                 }
                                 if(eventType == "change") {
-                                    $.fn.crsa("setNeedsUpdate", false, $el);
+                                    wfbuilder.setNeedsUpdate(false, $el);
                                     value = new_value;
                                 }
                                 return value;
@@ -1603,7 +1603,7 @@
                                     new_value = max_c;
                                 }
                                 if(eventType == "change") {
-                                    $.fn.crsa("setNeedsUpdate", false, $el);
+                                    wfbuilder.setNeedsUpdate(false, $el);
                                     value = new_value;
                                 }
                                 return value;
@@ -1678,7 +1678,7 @@
                                         }
                                     }
                                 }
-                                $.fn.crsa("setNeedsUpdate", false, $el);
+                                wfbuilder.setNeedsUpdate(false, $el);
                             }
                         }
                     }
@@ -1885,21 +1885,21 @@
             tags: 'major',
             'selector' : 'form',
             'code' : '<form role="form">\
-        <div class="form-group">\
-	    <label class="control-label" for="exampleInputEmail1">Email address</label>\
-	    <input type="email" class="form-control" id="exampleInputEmail1" placeholder="Enter email">\
-	    </div>\
-	        <div class="form-group">\
-	            <label class="control-label" for="exampleInputPassword1">Password</label>\
-	            <input type="password" class="form-control" id="exampleInputPassword1" placeholder="Password">\
-	            </div>\
-	            <div class="form-group">\
-	                <label class="control-label" for="exampleInputFile">File input</label>\
-	                <input type="file" id="exampleInputFile">\
-	                    <p class="help-block">Example block-level help text here.</p>\
-	                </div>\
-	                <div class="checkbox">\
-	                    <label class="control-label" >\
+                        <div class="form-group">\
+                    	    <label class="control-label" for="exampleInputEmail1">Email address</label>\
+                    	    <input type="email" class="form-control" id="exampleInputEmail1" placeholder="Enter email">\
+                	    </div>\
+            	        <div class="form-group">\
+            	            <label class="control-label" for="exampleInputPassword1">Password</label>\
+            	            <input type="password" class="form-control" id="exampleInputPassword1" placeholder="Password">\
+        	            </div>\
+        	            <div class="form-group">\
+        	                <label class="control-label" for="exampleInputFile">File input</label>\
+        	                <input type="file" id="exampleInputFile">\
+    	                    <p class="help-block">Example block-level help text here.</p>\
+    	                </div>\
+    	                <div class="checkbox">\
+	                       <label class="control-label" >\
 	                        <input type="checkbox"> Check me out\
 	                        </label>\
 	                    </div>\
@@ -1909,7 +1909,7 @@
             action_menu: {
                 add: ['form-group', 'form-textarea-group', 'form-select-group', 'form-checkbox-group', 'form-radio-group', 'form-static-group', 'form-fieldset'],
                 on_add : function($el, $new, newdef, prepend) {
-                    var values = $.fn.crsa('getValuesForElement', $el);
+                    var values = wfbuilder.getValuesForElement($el);
 
                     var pgel = new pgQuery($el);
                     var pgnew = new pgQuery($new);
@@ -1923,9 +1923,8 @@
                 }
             },
             on_child_inserted : function($pel, $el, cp) {
-                // sws: blocked
-                // var values = $.fn.crsa('getValuesForElement', $pel);
-                // restructureForm($pel, values);
+                var values = wfbuilder.getValuesForElement($pel);
+                restructureForm($pel, values);
             },
             'sections' : crsaAddStandardSections({
                 'layout' : {
@@ -1955,7 +1954,8 @@
                                 pgel.removeClass('form-horizontal').removeClass('form-inline').removeClass('form-normal').removeClass('navbar-form');
                                 pgel.addClass(value);
                                 restructureForm($el, values);
-                                $.fn.crsa("setNeedsUpdate", false, $el);
+                                // $.fn.crsa("setNeedsUpdate", false, $el);
+                                wfbuilder.setNeedsUpdate(false, $el);
                             }
                         }
                     }
@@ -2005,7 +2005,8 @@
                                 var pgel = new pgQuery($el);
                                 setTimeout(function() {
                                     restructureForm($el, values);
-                                    $.fn.crsa("setNeedsUpdate", true, $el);
+                                    // $.fn.crsa("setNeedsUpdate", true, $el);
+                                    wfbuilder.setNeedsUpdate(true, $el);
                                 }, 100);
                                 $el.data('crsa-form-col1', value);
                                 return value;
@@ -2039,7 +2040,8 @@
                                 var $el = obj.data;
                                 setTimeout(function() {
                                     restructureForm($el, values);
-                                    $.fn.crsa("setNeedsUpdate", true, $el);
+                                    // $.fn.crsa("setNeedsUpdate", true, $el);
+                                    wfbuilder.setNeedsUpdate(true, $el);
                                 }, 100);
                                 $el.data('crsa-form-col2', value);
                                 return value;
@@ -2117,7 +2119,8 @@
                                     }
                                     pgel.removeClass('has-feedback');
                                 }
-                                pinegrow.setNeedsUpdate($el);
+                                // pinegrow.setNeedsUpdate($el);
+                                service.setNeedsUpdate($el);
                                 return value;
                             }
                         }
@@ -2710,9 +2713,9 @@
             'selector' : 'div.input-group',
             priority: 100,
             'code' : '<div class="input-group">\
-        <span class="input-group-addon">@</span>\
-			    <input type="text" class="form-control" placeholder="Username">\
-			    </div>',
+                        <span class="input-group-addon">@</span>\
+			             <input type="text" class="form-control" placeholder="Username">\
+			         </div>',
             'name' : 'Input group',
             action_menu : {
                 'add' : ['input-group-span'],
@@ -2813,7 +2816,7 @@
                                     pgel.removeAttr('href');
                                 }
 
-                                $.fn.crsa('setNeedsUpdate', false, obj.data);
+                                wfbuilder.setNeedsUpdate(false, obj.data);
                                 return value;
                             }
                         },
@@ -3111,7 +3114,7 @@
                                     }
                                 });
                                 pgel.addClass(value);
-                                $.fn.crsa('setNeedsUpdate', false, $el);
+                                wfbuilder.setNeedsUpdate(false, $el);
                                 return value;
                             }
                         },
@@ -3344,8 +3347,8 @@
                                         pga.html(pga.html().replace(/\s*<b class="caret"><\/b>/i,''));
                                         pga.removeAttr('data-toggle');
                                     }
-                                    $.fn.crsa('setNeedsUpdate', false, $el);
-                                    $.fn.crsa('setSelectElementOnUpdate', $el);
+                                    wfbuilder.setNeedsUpdate(false, $el);
+                                    wfbuilder.setSelectElementOnUpdate($el);
                                     return value;
                                 }
                             },
@@ -3526,14 +3529,14 @@
                                             }
                                             pgpanes.insertAfter(pgel);
                                         }
-                                        $.fn.crsa("setNeedsUpdate", false, $el.parent().has($panes) ? $el.parent() : $el.closest('body'));
+                                        wfbuilder.setNeedsUpdate(false, $el.parent().has($panes) ? $el.parent() : $el.closest('body'));
                                     } else {
                                         var next = $panes && $el.parent().has($panes);
                                         if($panes) {
                                             $el.data('crsa-tab-panes', pgpanes.get(0).el.outerHTML);
                                             $panes.remove();
                                         }
-                                        $.fn.crsa("setNeedsUpdate", false, next ? $el.parent() : $el.closest('body'));
+                                        wfbuilder.setNeedsUpdate(false, next ? $el.parent() : $el.closest('body'));
                                     }
                                     showJavascriptMessage();
                                 }
@@ -3975,7 +3978,7 @@
                                         pgbutton.remove();
                                         pgcontent.remove();
                                     }
-                                    $.fn.crsa('setNeedsUpdate', false, $el);
+                                    wfbuilder.setNeedsUpdate(false, $el);
                                     return value;
                                 }
                             },
@@ -4182,7 +4185,8 @@
                                 pgel = pgel.replaceTag(tag);
                                 obj.data = $(pgel.get(0).el);
 
-                                $.fn.crsa("setNeedsUpdate", false, $el);
+                                // $.fn.crsa("setNeedsUpdate", false, $el);
+                                wfbuilder.setNeedsUpdate(false, $el);
                                 return value;
                             }
                         },
@@ -4416,7 +4420,8 @@
                                         putInContainer();
                                         putContentOutOfContainer();
                                     }
-                                    $.fn.crsa('setNeedsUpdate');
+                                    // $.fn.crsa('setNeedsUpdate');
+                                    wfbuilder.setNeedsUpdate();
                                     return value;
                                 }
                             }
@@ -4579,7 +4584,8 @@
                                     } else {
                                         pgb.remove();
                                     }
-                                    $.fn.crsa('setNeedsUpdate', false, $el);
+                                    // $.fn.crsa('setNeedsUpdate', false, $el);
+                                    wfbuilder.setNeedsUpdate(false, $el);
                                     return value;
                                 }
                             }
@@ -4961,7 +4967,7 @@
                                     for(var n = 0; n < newels.length; n++) {
                                         pgnewel.append(newels[n]);
                                     }
-                                    $.fn.crsa('setNeedsUpdate', false, $newel);
+                                    wfbuilder.setNeedsUpdate(false, $newel);
                                     return value;
                                 }
                             }
@@ -5652,12 +5658,12 @@
         var callSlider = function($el, func, msg) {
             var id = $el.attr('data-pg-id');
             var code = '$(\'[data-pg-id="' + id + '"]\').' + func + ';';
-            var page = pinegrow.getPageForElement($el);
-            pinegrow.setIgnoreClicks(true);
-            pinegrow.executeScriptInPage(page, code);
-            pinegrow.setIgnoreClicks(false);
+            var page = service.getPageForElement($el);
+            service.setIgnoreClicks(true);
+            service.executeScriptInPage(page, code);
+            service.setIgnoreClicks(false);
             if(msg) {
-                pinegrow.showQuickMessage(msg);
+                service.showQuickMessage(msg);
             }
         }
 
@@ -5882,11 +5888,146 @@
         f.addComponentType(tag);
 
         /* add db-async controls to framework*/
+        // var form_group = {
+        //     'type' : 'form-group',
+        //     'selector' : function($el) {
+        //         //if($el.is('input') && $el.attr('type') != 'checkbox') return true;
+        //         if($el.is('div.form-group')) return true;
+        //         return false;
+        //     },
+        //     parent_selector: 'form,fieldset',
+        //     'code' : function(env) {
+        //         var id = getUniqueId('formInput');
+        //         return '<div class="form-group">\
+        //                     <label class="control-label" for="' + id + '">Field label</label>\
+        //                     <div class="radio" id="' + id + '">\
+        //                         <label class="control-label">\
+        //                             <input type="radio" name="boolean" value="yes" checked>\
+        //                                 Yes\
+        //                         </label>\
+        //                         <label class="control-label">\
+        //                             <input type="radio" name="boolean" value="yes" checked>\
+        //                                 No\
+        //                         </label>\
+        //                     </div>\
+        //                 </div>'
+        //     },
+        //     'name' : 'Form group',
+        //     action_menu: {
+        //         add: ['form-static', 'form-input', 'textarea', 'form-checkbox','form-radio', 'label',  'form-help', 'form-select']
+        //     },
+        //     'sections' : crsaAddStandardSections({
+        //         'data' : {
+        //             name : 'Group options',
+        //             fields : {
+        //                 'validation' : {
+        //                     'type' : 'select',
+        //                     'name' : 'Validation state',
+        //                     'action' : 'apply_class',
+        //                     'show_empty' : true,
+        //                     'options' : [
+        //                         {key: 'has-success', name: 'Success'},
+        //                         {key: 'has-warning', name: 'Warning'},
+        //                         {key: 'has-error', name: 'Error'}
+        //                     ]
+        //                 },
+        //                 'feedback' : {
+        //                     'type' : 'checkbox',
+        //                     'name' : 'Feedback icon',
+        //                     value : '1',
+        //                     'action' : 'custom',
+        //                     get_value: function(obj) {
+        //                         var $el = obj.data;
+        //                         var val = ($el.hasClass('has-feedback') && $el.find('.form-control-feedback').length > 0) ? '1' : null;
+        //                         return val;
+        //                     },
+        //                     set_value: function(obj, value, values, oldValue, eventType) {
+        //                         crsaWillChangeDom();
+        //                         var $el = obj.data;
+        //                         var pgel = new pgQuery($el);
+        //                         if(value) {
+        //                             pgel.addClass('has-feedback');
+        //                             var code = '<span class="glyphicon glyphicon-ok form-control-feedback"></span>';
+        //                             if($el.data('crsa-old-feedback')) {
+        //                                 code = $el.data('crsa-old-feedback');
+        //                             }
+        //                             pgel.append(new pgQuery().create(code));
+        //                         } else {
+        //                             var $old = $el.find('.form-control-feedback');
+        //                             if($old.length > 0) {
+        //                                 $el.data('crsa-old-feedback', $old.get(0).outerHTML);
+        //                                 new pgQuery($old).remove();
+        //                             }
+        //                             pgel.removeClass('has-feedback');
+        //                         }
+        //                         pinegrow.setNeedsUpdate($el);
+        //                         return value;
+        //                     }
+        //                 }
+        //             }
+        //         }
+        //     })
+        // }
+
+
+        var db_form_input_group = {
+            'type' : 'db-form-input-group',
+            'selector' : 'div.input-group',
+            priority: 100,
+            'code' : '<div class="input-group" style="margin-bottom:5px;">\
+                        <span class="input-group-addon" style="min-width: 100px;">@</span>\
+                         <input type="text" class="form-control" placeholder="Username">\
+                     </div>',
+            'name' : 'Input group',
+            parent_selector: "form, fieldset",
+            action_menu : {
+                'add' : ['input-group-span'],
+                'on_add' : function($el, $new, newdef, prepend) {
+                    var spanCls = 'input-group-addon';
+                    var pgel = new pgQuery($el);
+                    var pgnew = new pgQuery($new);
+                    if(['form-checkbox-naked', 'form-radio-naked'].indexOf(newdef.type) >= 0) {
+                        //$new = $('<span/>').append($new);
+                        pgnew = new pgQuery().create('<span></span>').append(pgnew);
+                    } else if(['button-dropdown'].indexOf(newdef.type) >= 0) {
+                        pgnew.addClass('input-group-btn').removeClass('btn-group');
+                    }
+                    if($new.is('span')) {
+                        pgnew.addClass(spanCls);
+                    }
+                    if(prepend) {
+                        pgel.prepend(pgnew);
+                    } else {
+                        pgel.prepend(pgnew);
+                    }
+                }
+            },
+            'sections' : crsaAddStandardSections({
+                'style' : {
+                    name : 'Input group',
+                    fields : {
+                        size: {
+                            name: 'Size',
+                            type: 'select',
+                            action: 'apply_class',
+                            show_empty : true,
+                            options: [
+                                {key: 'input-group-lg', name: 'Large'},
+                                {key: 'input-group-sm', name: 'Small'}
+                            ]
+                        }
+                    }
+                }
+            })
+        }
+        f.addComponentType(db_form_input_group);
+
+
         var db_boolean = {
             'type' : 'db-boolean',
             selector: '.radio',
             parent_selector: 'form,fieldset',
-            'code': '<div class="radio">\
+            'code': '<div class="radio form-control" style="margin-top: 0;">\
                         <label class="control-label">\
                             <input type="radio" name="boolean" value="yes" checked>\
                                 Yes\
@@ -6280,7 +6421,7 @@
                 //if($el.is('div.form-group')) return true;
                 return false;
             },
-            'code' : '<input type="file" placeholder="">',
+            'code' : '<input type="file" class="form-control" placeholder="">',
             'drag_helper' : '<input type="file" placeholder="" style="width: 250px; height: 30px;">',
             'name' : 'Input',
             'sections' : crsaAddStandardSections({
@@ -6356,6 +6497,27 @@
         f.addComponentType(db_input_cur);
         f.addComponentType(db_input_date);
         f.addComponentType(db_input_file);
+
+        var db_fieldset = {
+            'type' : 'db-fieldset',
+            'selector' : 'fieldset',
+            // parent_selector: 'form',
+
+            'code' : '<fieldset style="background-color:#f7f7f7; padding-left:10px; padding-right:10px; margin-bottom: 15px;"><legend>legend</legend></fieldset>',
+            'name' : 'Fieldset',
+            action_menu: {
+                add: ['form-group', 'form-textarea-group', 'form-select-group', 'form-checkbox-group', 'form-radio-group', 'form-static-group']
+            },
+            'sections' : crsaAddStandardSections({
+                'style' : {
+                    name : 'Style',
+                    fields : {
+                        disabled: disabled
+                    }
+                }
+            })
+        }
+        f.addComponentType(db_fieldset);
 
         var db_select = {
             'type' : 'db-select',
@@ -6515,11 +6677,13 @@
             if (pgel.getClasses().indexOf("row") > -1) {
                 menus.push(
                     {label: "Update column breaks", class: 'insert-col-breaks', kbd: null, manage_change: true, action: function($el) {
-                        var selectedPage = pinegrow.getSelectedPage();
-                        pinegrow.makeChanges(selectedPage, $el, "Insert column breaks", function() {
+
+                        var selectedPage = service.getSelectedCrsaPage();
+                        service.makeChanges(selectedPage, $el, "Insert column breaks", function() {
                             var pgel = new pgQuery($el);
                             var sizes = ['xs', 'sm', 'md', 'lg'];
-                            var num_columns = parseInt(pinegrow.getSetting('bootstrap-col-num', '12')) || 12;
+
+                            var num_columns = parseInt(service.getSetting('bootstrap-col-num', '12')) || 12;
 
                             var $clearfixList = $el.children('.clearfix');
                             $clearfixList.each(function (index, clearfix) {
@@ -6614,8 +6778,8 @@
                                 }
                             });
 
-                            $.fn.crsa('updateStructureAndWireAllElemets', selectedPage.$iframe);
-                            pinegrow.showQuickMessage('Column breaks updated.');
+                            wfbuilder.updateStructureAndWireAllElemets(selectedPage.$iframe);
+                            service.showQuickMessage('Column breaks updated.');
                         });
                     }
                 })
@@ -6634,7 +6798,7 @@
 
             ext.addFieldFromProp('button-size', 'Button size', button.sections.button.fields['bs_button_size'], '.btn');
 
-            //sws//pinegrow.addEditableAreaExtension(ext);
+            //service.addEditableAreaExtension(ext);
             extension_added = true;
             //end add extension
 

@@ -8,6 +8,8 @@ var Service = function() {
 
     var current_project = null;
 
+    var _this = this;
+
     var self = this;
 
     self.projectTemplates = [];
@@ -27,9 +29,9 @@ var Service = function() {
         if(!ok && !cancel) ok = "OK";
 
         var $d = $(comp_modals.alert);
-        var $header = $d.find("modal-header");
-        var $content = $d.find("modal-body");
-        var $footer = $d.find("modal-footer");
+        var $header = $d.find(".modal-header");
+        var $content = $d.find(".modal-body");
+        var $footer = $d.find(".modal-footer");
 
         $("<h4 class=\"modal-title\">" + title + "</h4>").appendTo($header);
         $("<div>" + body + "</div>").appendTo($content);
@@ -46,7 +48,40 @@ var Service = function() {
 
         return $d;
     }
+    this.setSetting = function(key, value) {
+        key = 'settings-' + key;
+        window.localStorage[key] = value;
+    }
+    this.getStylesheets = function() {
+        return $.fn.crsacss('getAllCrsaStylesheets');
+    }
 
+    this.getPageForElement = function($el) {
+        var $if = getIframeOfElement($el);
+         if($if) {
+              return getCrsaPageForIframe($if);
+        }
+        return null;
+    }
+    this.showCSSRules = function($el, filter, active) {
+        wfbuilder.showCSSRules($el, filter, active);
+    }
+
+    this.addEventHandler = function(event, func) {
+       
+        if(!event_handlers[event]) {
+            event_handlers[event] = [];
+        }
+        event_handlers[event].push(func);
+    }
+    this.getAllPages = function() {
+        return methods.getAllPages();
+    }
+
+    this.setNeedsUpdate = function($el, now) {
+        wfbuilder.setNeedsUpdate(now, $el);
+    }
+    
     this.showQuickMessage = function(msg, duration, single, context) {
         return crsaQuickMessage(msg, duration, single, context);
     }
@@ -130,7 +165,7 @@ var Service = function() {
     };
 
     this.callGlobalFrameworkHandler = function(name, a, b, c, cp) {
-        if(!cp) cp = this.getSelectedPage();
+        if(!cp) cp = this.getSelectedCrsaPage();
         var ret = null;
         $.each(this.getFrameworks(), function(key, f) {
             if(name in f && f[name]) {
@@ -155,7 +190,7 @@ var Service = function() {
     this.getWorkingDir = function() {
         var project = service.getCurrentProject();
         if(project) return project.currentWorkingDir || project.getDir();
-        var page = service.getSelectedPage();
+        var page = service.getSelectedCrsaPage();
         if(page && page.localFile) {
             return require('path').dirname(page.localFile);
         }
@@ -268,6 +303,10 @@ var Service = function() {
         return wfbuilder.getSelectedPage();
     }
 
+    this.getSelectedCrsaPage = function() {
+        return wfbuilder.getSelectedCrsaPage();
+    }
+
     this.getOriginalUrl = function(url) {
         if(this.httpServer) {
             return this.httpServer.getOriginalUrl(url);
@@ -283,9 +322,9 @@ var Service = function() {
 
     this.getWorkingDir = function() {
         // sws: blocked
-        // var project = pinegrow.getCurrentProject();
+        // var project = service.getCurrentProject();
         // if(project) return project.currentWorkingDir || project.getDir();
-        var page = service.getSelectedPage();
+        var page = service.getSelectedCrsaPage();
         if(page && page.localFile) {
             return require('path').dirname(page.localFile);
         }
@@ -340,6 +379,58 @@ var Service = function() {
         }
         return false;
     }
+
+    this.isContributorMode = function() {
+        var p = crsaStorage.getValue('activatedProduct');
+        if(p && p.indexOf('CMSUSER') >= 0) return true;
+        return service.getSetting('contributor-mode', 'false') == 'true';
+    }
+
+    this.insight = new PgInsight();
+
+     this.openOrShowPage = function(url, done, hide_others, select_page) {
+        var cp = this.getCrsaPageByUrl(url);
+        if(!cp) {
+
+             this.openPage(url, function(cp) {
+                if(select_page || hide_others) {
+                    setTimeout(function() {
+                        _this.pageTabs.showPage(cp, hide_others);
+                    }, 200);
+                }
+                if(done) done(cp);
+            });
+        } else {
+            this.pageTabs.showPage(cp, hide_others);
+            scrollCanvasToPage(cp.$iframe);
+            if(done) done(cp);
+        }
+    }
+
+    this.openPage = function(url, done, select_page, on_css_done, options) {
+    
+        if(this.isFileEditable(crsaMakeFileFromUrl(url))) {
+            wfbuilder.openPage( url, /* null,*/ function(cp) {
+                scrollCanvasToPage(cp.$iframe);
+                if(select_page) {
+                    setTimeout(function() {
+                        this.pageTabs.showPage(cp, false);
+                    }, 200);
+                }
+
+                if(done) done(cp);
+            }, function(cp) {
+                //on source loaded
+                if(crsaIsFileUrl(url)) {
+                    cp.setLocalFile(crsaMakeFileFromUrl(url));
+                }
+            }, null, null, options);
+        } else {
+            service.showQuickMessage('Files of this type can not be edited in Web Form Builder.');
+        }
+    }
+
+    
 }
 
 var PgFramework = function(key, name) {
@@ -393,7 +484,7 @@ var PgFramework = function(key, name) {
     }
 
     this.isTrialActive = function() {
-        return pinegrow.isProductTrialActive(this.key, this.trial_start_message, this.trial_expired_message);
+        return service.isProductTrialActive(this.key, this.trial_start_message, this.trial_expired_message);
     }
 
     this.addComponentType = function(def) {
@@ -773,7 +864,7 @@ var PgFramework = function(key, name) {
                     $(function() {\n\
                     \n\
                         //Wait for Pinegrow to wake-up\n\
-                        $("body").one("pinegrow-ready", function(e, pinegrow) {\n\
+                        $("body").one("pinegrow-ready", function(e, service) {\n\
                     \n\
                             //Create new Pinegrow framework object\n\
                             var f = new PgFramework("' + this.key + '", "' + this.name + '");\n\
@@ -785,7 +876,7 @@ var PgFramework = function(key, name) {
                     \n\
                     ' + s + '\n\
                             //Tell Pinegrow about the framework\n\
-                            pinegrow.addFramework(f);\n\
+                            service.addFramework(f);\n\
                                 \n\
                             var section = new PgFrameworkLibSection("' + this.key + '_lib", "Components");\n\
                             //Pass components in array\n\
@@ -800,7 +891,7 @@ var PgFramework = function(key, name) {
             var fs = require('fs');
             crsaWriteFileWithBackup(fs, file, source, "utf8");
             this.pluginUrl = url;
-            pinegrow.saveFrameworksList();
+            service.saveFrameworksList();
             this.changed = false;
         }
         catch(err) {
@@ -847,7 +938,7 @@ var PgFramework = function(key, name) {
 
     this.fieldIsRequired = function(obj, prop, value, fieldDef, $field, values) {
         if(!value) {
-            return pinegrow.getValidationError(fieldDef.name, 'req');
+            return service.getValidationError(fieldDef.name, 'req');
         }
         return null;
     }
@@ -859,13 +950,13 @@ var PgFramework = function(key, name) {
 
 
     this.requireSelectedElement = function(callback) {
-        var cp = pinegrow.getSelectedPage();
+        var cp = service.getSelectedCrsaPage();
         if(!cp) {
-            pinegrow.showQuickMessage('A page must be open for this to work.');
+            service.showQuickMessage('A page must be open for this to work.');
         } else {
-            var el = pinegrow.getSelectedElement();
+            var el = service.getSelectedElement();
             if(!el) {
-                pinegrow.showQuickMessage('An element must be selected.');
+                service.showQuickMessage('An element must be selected.');
             } else {
                 var $el = el.data;
                 var pgel = new pgQuery($el);
@@ -920,10 +1011,10 @@ var PgFramework = function(key, name) {
         var path = require('path');
         var wasChanged = function() {
             var $head = page.get$Html().find('head');
-            pinegrow.setNeedsUpdate($head, true);
+            service.setNeedsUpdate($head, true);
         }
 
-        var project = pinegrow.getCurrentProject();
+        var project = service.getCurrentProject();
 
         var resource_folder = null;
         var changed = false;
@@ -960,7 +1051,7 @@ var PgFramework = function(key, name) {
             }
         }
         if (!changed)
-            pinegrow.refreshAllPages();
+            service.refreshAllPages();
     }
 
     this.addResourcesToProject = function(project, done, overwrite_existing, same_project) {
@@ -968,7 +1059,7 @@ var PgFramework = function(key, name) {
 
         var wasChanged = function() {
             var $head = page.get$Html().find('head');
-            pinegrow.setNeedsUpdate($head, true);
+            service.setNeedsUpdate($head, true);
         }
 
         var resource_folder = project.getDir();
@@ -1112,8 +1203,7 @@ var PgComponentTypeResource = function(url, code) {
 
         this.copy(dest_path, done, overwrite_existing);
     }
-
-*/
+    */
 
     this.copy = function(dest, done, overwrite_existing, file_writter) {
         var path = require('path');
@@ -1381,7 +1471,7 @@ var PgStats = function() {
     }
 
     this.event = function(event, data, force) {
-        var disable_stats = pinegrow && pinegrow.getSetting('disable-stats', '0') == '1';
+        var disable_stats = service && service.getSetting('disable-stats', '0') == '1';
 
         if(disable_stats && !force) return;
 
@@ -1409,7 +1499,7 @@ var PgStats = function() {
 
     this.send = function(done) {
 
-        var disable_stats = pinegrow && pinegrow.getSetting('disable-stats', '0') == '1';
+        var disable_stats = service && service.getSetting('disable-stats', '0') == '1';
 
         //debugger;
         if(in_progress) {
@@ -1462,7 +1552,7 @@ var PgStats = function() {
                 if(data.msg_title) {
                     var delay = data.msg_delay || 10000;
                     setTimeout(function() {
-                        pinegrow.showAlert(data.msg_text || '', data.msg_title);
+                        service.showAlert(data.msg_text || '', data.msg_title);
                     }, delay);
 
                 }
@@ -1532,7 +1622,7 @@ var CrsaCollapsibleSections = function ($list) {
             if (updateUsage) updateUsage($section);
         });
 
-        // if(pinegrow.getSelectedElement() && updateUsage) {
+        // if(service.getSelectedElement() && updateUsage) {
         //     updateUsage();
         // }
     }

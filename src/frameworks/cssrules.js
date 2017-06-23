@@ -96,7 +96,7 @@
         }
 
         var highlightOnChanged = function(obj, prop, value, oldValue, fieldDef, $field, eventType, values, crsaPage) {
-            var page = service.getSelectedPage();
+            var page = service.getSelectedCrsaPage();
             if(page) {
                 try {
                     var elements = page.get$Html().find(obj.data.selector);
