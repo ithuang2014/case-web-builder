@@ -1885,21 +1885,21 @@
             tags: 'major',
             'selector' : 'form',
             'code' : '<form role="form">\
-        <div class="form-group">\
-	    <label class="control-label" for="exampleInputEmail1">Email address</label>\
-	    <input type="email" class="form-control" id="exampleInputEmail1" placeholder="Enter email">\
-	    </div>\
-	        <div class="form-group">\
-	            <label class="control-label" for="exampleInputPassword1">Password</label>\
-	            <input type="password" class="form-control" id="exampleInputPassword1" placeholder="Password">\
-	            </div>\
-	            <div class="form-group">\
-	                <label class="control-label" for="exampleInputFile">File input</label>\
-	                <input type="file" id="exampleInputFile">\
-	                    <p class="help-block">Example block-level help text here.</p>\
-	                </div>\
-	                <div class="checkbox">\
-	                    <label class="control-label" >\
+                        <div class="form-group">\
+                    	    <label class="control-label" for="exampleInputEmail1">Email address</label>\
+                    	    <input type="email" class="form-control" id="exampleInputEmail1" placeholder="Enter email">\
+                	    </div>\
+            	        <div class="form-group">\
+            	            <label class="control-label" for="exampleInputPassword1">Password</label>\
+            	            <input type="password" class="form-control" id="exampleInputPassword1" placeholder="Password">\
+        	            </div>\
+        	            <div class="form-group">\
+        	                <label class="control-label" for="exampleInputFile">File input</label>\
+        	                <input type="file" id="exampleInputFile">\
+    	                    <p class="help-block">Example block-level help text here.</p>\
+    	                </div>\
+    	                <div class="checkbox">\
+	                       <label class="control-label" >\
 	                        <input type="checkbox"> Check me out\
 	                        </label>\
 	                    </div>\
@@ -2713,9 +2713,9 @@
             'selector' : 'div.input-group',
             priority: 100,
             'code' : '<div class="input-group">\
-        <span class="input-group-addon">@</span>\
-			    <input type="text" class="form-control" placeholder="Username">\
-			    </div>',
+                        <span class="input-group-addon">@</span>\
+			             <input type="text" class="form-control" placeholder="Username">\
+			         </div>',
             'name' : 'Input group',
             action_menu : {
                 'add' : ['input-group-span'],
@@ -5968,11 +5968,66 @@
         //         }
         //     })
         // }
+
+
+        var db_form_input_group = {
+            'type' : 'db-form-input-group',
+            'selector' : 'div.input-group',
+            priority: 100,
+            'code' : '<div class="input-group" style="margin-bottom:5px;">\
+                        <span class="input-group-addon" style="min-width: 100px;">@</span>\
+                         <input type="text" class="form-control" placeholder="Username">\
+                     </div>',
+            'name' : 'Input group',
+            parent_selector: "form, fieldset",
+            action_menu : {
+                'add' : ['input-group-span'],
+                'on_add' : function($el, $new, newdef, prepend) {
+                    var spanCls = 'input-group-addon';
+                    var pgel = new pgQuery($el);
+                    var pgnew = new pgQuery($new);
+                    if(['form-checkbox-naked', 'form-radio-naked'].indexOf(newdef.type) >= 0) {
+                        //$new = $('<span/>').append($new);
+                        pgnew = new pgQuery().create('<span></span>').append(pgnew);
+                    } else if(['button-dropdown'].indexOf(newdef.type) >= 0) {
+                        pgnew.addClass('input-group-btn').removeClass('btn-group');
+                    }
+                    if($new.is('span')) {
+                        pgnew.addClass(spanCls);
+                    }
+                    if(prepend) {
+                        pgel.prepend(pgnew);
+                    } else {
+                        pgel.prepend(pgnew);
+                    }
+                }
+            },
+            'sections' : crsaAddStandardSections({
+                'style' : {
+                    name : 'Input group',
+                    fields : {
+                        size: {
+                            name: 'Size',
+                            type: 'select',
+                            action: 'apply_class',
+                            show_empty : true,
+                            options: [
+                                {key: 'input-group-lg', name: 'Large'},
+                                {key: 'input-group-sm', name: 'Small'}
+                            ]
+                        }
+                    }
+                }
+            })
+        }
+        f.addComponentType(db_form_input_group);
+
+
         var db_boolean = {
             'type' : 'db-boolean',
             selector: '.radio',
             parent_selector: 'form,fieldset',
-            'code': '<div class="radio">\
+            'code': '<div class="radio form-control" style="margin-top: 0;">\
                         <label class="control-label">\
                             <input type="radio" name="boolean" value="yes" checked>\
                                 Yes\
@@ -6366,7 +6421,7 @@
                 //if($el.is('div.form-group')) return true;
                 return false;
             },
-            'code' : '<input type="file" placeholder="">',
+            'code' : '<input type="file" class="form-control" placeholder="">',
             'drag_helper' : '<input type="file" placeholder="" style="width: 250px; height: 30px;">',
             'name' : 'Input',
             'sections' : crsaAddStandardSections({
@@ -6623,7 +6678,7 @@
                 menus.push(
                     {label: "Update column breaks", class: 'insert-col-breaks', kbd: null, manage_change: true, action: function($el) {
 
-                        var selectedPage = service.getSelectedPage();
+                        var selectedPage = service.getSelectedCrsaPage();
                         service.makeChanges(selectedPage, $el, "Insert column breaks", function() {
                             var pgel = new pgQuery($el);
                             var sizes = ['xs', 'sm', 'md', 'lg'];

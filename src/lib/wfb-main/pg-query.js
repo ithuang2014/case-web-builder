@@ -294,6 +294,8 @@ function pgInsertNodeAtDOMElementLocation(node, $el) {
         }
 
     } else {
+        console.log($prev);
+        console.log($el);
         var pgPrev = getElementPgNode($prev);
         if(!pgPrev) return false;
         node.insertAfter(pgPrev);

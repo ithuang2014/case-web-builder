@@ -13,6 +13,7 @@ var DBService = function() {
 	self.connect_db = function(config, s_callback, e_callback) {
 		self.disconnect_db();
 
+		config.connectionTimeout = 5000;
 		self.connection = new sql.Connection(config, function(err) {
 			if (err && err != undefined) {
 				e_callback();
@@ -85,7 +86,10 @@ var DBService = function() {
 	};
 
 	self.save_idWfClass = function(val) {
+		var res = self.appStorage.db_connection.idWfClass == val;
 		self.appStorage.db_connection.idWfClass = val;
+
+		return !res;
 	};
 
 	self.is_root_table_set = function() {
@@ -127,6 +131,7 @@ var DBService = function() {
 
 		self.connection.request().query(query, function(err, recordset) {
 			if (err && err != undefined) {
+				callback(null, err);
 				window.alert(err.message);
 				return;
 			}
@@ -184,10 +189,12 @@ var DBService = function() {
 		});
 	};
 
-	self.save_db_credential = function() {
+	self.save_db_credential = function(idWfClassDisplayName) {
 		if (!self.is_connected())
 			return;
-		localStorage.setItem("db_setting", JSON.stringify(self.appStorage.db_connection.config));
+		var db_config = JSON.parse(JSON.stringify(self.appStorage.db_connection.config));
+		db_config["idWfClass"] = idWfClassDisplayName;
+		localStorage.setItem("db_setting", JSON.stringify(db_config));
 	}
 	self.get_db_credential = function() {
 		var res = localStorage.getItem("db_setting");

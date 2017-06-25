@@ -73,26 +73,26 @@ var CrsaUndoState = function(page, name, force_cs) {
 
 var CrsaPageUndoStack = function(page) {
 
-    var stack = [];
-    var pointer = -1;
+    var stack = ko.observableArray([]);
+    var pointer = ko.observable(-1);
     var last = 'undo';
     this.page = page;
 
     this.add = function(name, no_pointer, force_cs) {
         var d = new CrsaUndoState(this.page, name, force_cs);
 
-        if(stack.length > pointer + 1) {
-            stack.splice(pointer + 1, stack.length - (pointer + 1));
+        if(stack().length > pointer() + 1) {
+            stack.splice(pointer() + 1, stack().length - (pointer() + 1));
         }
         stack.push(d);
         if(!no_pointer) {
-            pointer++;
+            pointer(pointer() + 1);
 
             var max = 20;
-            if(pointer > max) {
-                var diff = pointer - max;
+            if(pointer() > max) {
+                var diff = pointer() - max;
                 stack.splice(0, diff);
-                pointer -= diff;
+                pointer(pointer() - diff);
                 //console.log('Cleared ' + diff + ' from undo stack');
             }
         }
@@ -100,41 +100,51 @@ var CrsaPageUndoStack = function(page) {
     }
 
     this.isAtTheTip = function() {
-        return pointer >= 0 && stack.length == pointer + 1;
+        return pointer() >= 0 && stack().length == pointer() + 1;
     }
 
     this.remove = function() {
-        if(pointer < 0) {
+        if(pointer() < 0) {
             return null;
         }
-        pointer--;
-        stack.splice(pointer + 1, 1);
+        pointer(pointer() - 1);
+        stack.splice(pointer() + 1, 1);
     }
+
+    this.canUndo = ko.computed(function() {
+        var x = last == 'undo' ? 0 : 1;
+        return !(pointer() < 0 + x);
+    });
 
     this.undo = function(done) {
         debugger;
         var x = last == 'undo' ? 0 : 1;
-        if(pointer < 0 + x) {
+        if(pointer() < 0 + x) {
             if(done) done(null);
             return null;
         }
-        if(last != 'undo') pointer -= 1;
-        var d = stack[pointer];
-        pointer -= 1;
+        if(last != 'undo') pointer(pointer() - 1);
+        var d = stack()[pointer()];
+        pointer(pointer() - 1);
         d.apply(done);
         last = 'undo';
         return d;
     }
 
+    this.canRedo = ko.computed(function() {
+        var x = last == 'undo' ? 2 : 1;
+        return !(pointer() + x >= stack().length);
+    });
+
     this.redo = function(done) {
         debugger;
         var x = last == 'undo' ? 2 : 1;
-        if(pointer + x >= stack.length) {
+        if(pointer() + x >= stack().length) {
             if(done) done(null);
             return null;
         }
-        pointer += x;
-        var d = stack[pointer];
+        pointer(pointer() + x);
+        var d = stack()[pointer()];
         d.apply(done);
         last = 'redo';
         return d;

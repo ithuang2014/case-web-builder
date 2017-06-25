@@ -32,10 +32,11 @@ var CrsaPage = function(not_interactive) {
     
     this.crsaProjectTemplate = null;
 
-    // this.undoStack = new CrsaPageUndoStack(this);
     this.breakpoints = [];
     this.sourceNode = null;
     this.$iframe = null;
+
+    this.javascriptEnabled = true;
 
     var codeEditor;
 
@@ -171,6 +172,7 @@ var CrsaPage = function(not_interactive) {
                 has = has || cs.changed;
             });
         }
+
         return has;
     }
 
@@ -480,7 +482,8 @@ var CrsaPage = function(not_interactive) {
             }
             pinegrow.addEventHandler('on_page_shown_in_live_view', onDone);
         }
-        $('.canvas').trigger('crsa-page-refresh', this);
+        crsaQuickMessage("Refreshing page...", 1000);
+       wfbuilder.refreshPage(this);
     }
 
     this.autoSize = function() {
@@ -589,6 +592,7 @@ var CrsaPage = function(not_interactive) {
     }
 
     this.setPageChanged = function(val, force) {
+        debugger;
         if(this.live_update && this.save_parent) val = false;
 
         if(this.changed != val || force) {
@@ -603,7 +607,7 @@ var CrsaPage = function(not_interactive) {
                     p.hide();
                 }
 
-                // service.pageTabs.updateHasChangesStatus(this);
+                service.pageTabs.updateHasChangesStatus(this);
             }
 
             // if(this.changed) {
@@ -620,7 +624,7 @@ var CrsaPage = function(not_interactive) {
         if(disable_js) this.javascriptEnabled = false;
         
         service.httpServer.setCurrentRequestContext(this.url, this.sourceNode);
-        var html = pgel.toStringWithIds(true, service.getFormatHtmlOptions()/*//sws//block://service.httpServer.createProxyUrlNodeOutputFilter*/);
+        var html = pgel.toStringWithIds(true, service.getFormatHtmlOptions(),service.httpServer.createProxyUrlNodeOutputFilter);
         this.javascriptEnabled = origjs;
         return html;
     }
@@ -908,6 +912,66 @@ var CrsaPage = function(not_interactive) {
     }
 
     this.watchFileOnFileChanged = function(curr, prev) {
+        //console.log('ccccccccc');
+        //return;
+        var fs = require('fs');
+
+        var updatePage = function(v) {
+            var ret = _this.applyChangesToSource(v, false, false, true);
+
+            if(ret.updated) {
+                crsaQuickMessage("Auto refreshed!");
+                if(ret.changes && ret.changes.length == 1) {
+                    var $el = _this.getElementWithPgId(ret.changes[0].changed.getId());
+                    if($el) {
+                        pinegrow.selectElement($el);
+                        pinegrow.scrollCanvasToElement($el);
+                    }
+                }
+            } else if(ret.changes && !ret.update) {
+                //whole document is changed
+                _this.refresh();
+            }
+            _this.setPageChanged(false);
+
+            _this.callFrameworkHandler('on_page_loaded_from_external');
+        }
+
+        if(curr.mtime > prev.mtime && !_this.live_update && pinegrow.getSetting('auto-reloading', '1') == '1') {
+            var ct = (new Date()).getTime();
+            if(ct - _this.lastSavedAt > 5000) {
+                console.log(_this.localFile + ' changed');
+
+                var code = fs.readFileSync(_this.localFile, {encoding: "utf8"});
+
+                pinegrow.codeEditors.isCodeForUrlSameInExternalEditor(_this.url, code, function(same) {
+
+                    if(_this.watchReloadDialog) {
+                        try {
+                            _this.watchReloadDialog.modal('hide');
+                            _this.watchReloadDialog = null;
+                        } catch(err) {}
+                    }
+
+                    if(same) return;
+
+                    if(_this.changed) {
+
+                        _this.watchReloadDialog = showAlert('<p><b>' + _this.name + '</b> was modified outside of Pinegrow. The file has unsaved changes. Do you want to reload it?</p><p><em>You can disable auto-reloading in Support -&gt; Settings.</em></p>',  "Unsaved file modified outside of Pinegrow", "Don't reload", "Reload", function() {
+                            _this.watchReloadDialog = null;
+                        }, function() {
+                            _this.watchReloadDialog = null;
+                            updatePage(code);
+                        });
+                    } else {
+                        updatePage(code);
+                    }
+                })
+
+            } else {
+               // console.log(_this.localFile + ' changed in PG');
+            }
+        }
     }
 
     this.watchFileForChanges = function() {
@@ -1173,7 +1237,7 @@ var CrsaPage = function(not_interactive) {
 
     this.copyContentOfPage = function(crsaPage, skip_refresh) {
 
-        var ret = this.applyChangesToSource(crsaPage.sourceNode, false, true, service.getSelectedPage() == this);
+        var ret = this.applyChangesToSource(crsaPage.sourceNode, false, true, service.getSelectedCrsaPage() == this);
 
         if(ret.changes && !ret.updated && !skip_refresh) {
             this.refresh();
@@ -1184,6 +1248,7 @@ var CrsaPage = function(not_interactive) {
         var $page = this.$page;
         var name = this.name;
         var src = this.url;
+
          
         // var $code = $page.find('.edit-code');
        
@@ -1193,6 +1258,33 @@ var CrsaPage = function(not_interactive) {
         //     crsaPage.toggleEditCode();
         // })
         // addTooltip($code, 'Show/hide code editor');
+        
+
+                var openInBrowser = function(url) {
+                    var gui = require('nw.gui');
+                    var url = crsaPage.getPreviewUrl(true);
+
+                    if(url.indexOf('file://') == -10) {
+                        url = url.replace('file://', '');
+                        gui.Shell.openItem(url);
+                    } else {
+                        gui.Shell.openExternal(url);
+                    }
+                    pinegrow.showNotice('<p>The page was opened in your default browser. Click on <b>the link icon</b> next to Page -&gt; Preview in Browser to <b>copy the preview link to clipboard</b> from where you can use it to open the preview in any browser.</p><p>The preview link will work as long as the page is opened in Pinegrow.</p>', 'About the preview link', 'page-preview-link');
+                }
+
+             $('li.crsa-preview').attr('href', src).on('click', function(e) {
+                if(isApp){
+                        // if(!crsaPage.localFile) {
+                        //     service.showAlert('<p>After creating a new page, you have to <b>save the page</b> first, before using Preview in browser. After the page is saved on disk, you can use Preview in browser without saving the page.</p>', 'Page needs a home first');
+                        // } else {
+                            openInBrowser($(e.delegateTarget).attr('href'));
+                        // }
+                        e.preventDefault();
+                   }
+                });
+
+               
    }
 
     this.toggleEditCode = function() {
@@ -1312,7 +1404,7 @@ var CrsaPage = function(not_interactive) {
                 }
             }
             if(done) {
-                if($update_els.length && this == service.getSelectedPage() && this.openedInEditor) {
+                if($update_els.length && this == service.getSelectedCrsaPage() && this.openedInEditor) {
                     wfbuilder.updateStructureAndWireAllElemets(this.$iframe, $update_els, true);
                 }
 
@@ -1422,6 +1514,108 @@ var CrsaPage = function(not_interactive) {
             //this.removeFileNodeTag('syntax', fileNode, project);
         }
     }
+
+    this.makeAbsoluteUrl = function(relative_url) {
+        if(crsaIsAbsoluteUrl(relative_url)) return relative_url;
+        return require('url').resolve(this.url, relative_url);
+        //return crsaGetBaseForUrl(this.url) + '/' + relative_url;
+    }
+
+    this.hasChanges = function() {
+        return this.changed || (!this.onlyCode && this.hasCssChanges());
+    }
+
+    this.setSource = function(html, done, no_init, skip_dom_update) {
+
+        var parser = new pgParser();
+        parser.parse(html, function() {
+            this.sourceNode = parser.rootNode;
+            var htmlNodes = parser.rootNode.find('>html');
+            if(htmlNodes && htmlNodes.length) {
+                var htmlCode = htmlNodes[0].html(null, true);
+
+                var doc = getIframeDocument(_this.$iframe.get(0));
+                var $html = $(doc).find('> html');
+
+                $html[0].innerHTML = htmlCode;
+
+                var attributes = $.map($html[0].attributes, function(item) {
+                    return item.name;
+                });
+                $.each(attributes, function(i, item) {
+                    $html.removeAttr(item);
+                });
+
+                var attrs = htmlNodes[0].getAttrList();
+                for(var i = 0; i < attrs.length; i++) {
+                    $html.attr(attrs[i].name, attrs[i].value);
+                }
+
+                if(!no_init) {
+                    setTimeout(function() {
+                        $.fn.crsacss('loadLessStyles', _this.$iframe.get(0), function() {
+                            $.fn.crsa('updateStructureAndWireAllElemets', _this.$iframe);
+                            $('body').trigger('crsa-stylesheets-changed');
+                            this.addCrsaStyles();
+                            if(done) done();
+                        });
+                    }, 500);
+                } else {
+                    if(done) done();
+                }
+            } else {
+                if(done) done();
+            }
+        });
+    }
+
+    this.setJavascriptEnabled = function(value) {
+        if(this.javascriptEnabled != value) {
+            this.javascriptEnabled = value;
+            //pinegrow.setSetting('javascript-enabled', value ? '1' : '0');
+            this.refresh();
+        }
+    }
+
+    this.stopAnimations = function() {
+        var $html = $(getIframeHtmlElement(this.$iframe.get(0)));
+        $html.addClass('crsa-stop-animations');
+        this.animationsStopped = true;
+    }
+
+    this.startAnimations = function() {
+        var $html = $(getIframeHtmlElement(this.$iframe.get(0)));
+        $html.removeClass('crsa-stop-animations');
+        this.animationsStopped = false;
+    }
+
+    this.hasStoppedAnimations = function() {
+        var $html = $(getIframeHtmlElement(this.$iframe.get(0)));
+        return $html.hasClass('crsa-stop-animations');
+    }
+
+    this.getViewInnerHTMLForElement = function(pgel, disable_js) {
+        disable_js = true;
+        var origjs = this.javascriptEnabled;
+        if(disable_js) this.javascriptEnabled = false;
+        service.httpServer.setCurrentRequestContext(this.url, this.sourceNode);
+        var html = pgel.toStringWithIds(true, service.getFormatHtmlOptions(), service.httpServer.createProxyUrlNodeOutputFilter, true);
+        this.javascriptEnabled = origjs;
+        return html;
+    }
+
+    this.getPreviewUrl = function(noids) {
+        var url = crsaMakeUrlAbsolute(this.url);
+
+        var a = ['pgid=' + this.uid, 'pglive=1'];
+        if(noids) a.push('pgnoids=1');
+
+        //url += 'pgid=' + this.uid + '&pglive=1';
+        url = crsaAppendQueryToUrl(url, a);
+        url = service.getProxyUrl(url);
+
+        return url;
+    }
 }
 
 
@@ -1445,6 +1639,9 @@ var centerLeft = 300;
 var centerRight = 300;
 var fitZoom = true;
 
+var maxPageWidth = 3000;
+var minPageWidth = 200;
+
 var methods = {
 	addPage : function(srcUrl, loadedFunc, providedCrsaPage, onLoadCanceled, options) {
         var name = getPageName(srcUrl);
@@ -1453,6 +1650,7 @@ var methods = {
         }
 
         var self = this;
+        var crsaPage;
 
 		var new_page = {
 			crsaPage: ko.observable(null),
@@ -1462,7 +1660,8 @@ var methods = {
 			state: {
                 changed: ko.observable(true),
 				width: ko.observable(1024),
-				t_m: ko.observable(true),
+                custom_width: ko.observable(1024),
+				t_m: ko.observable(false),
 				js_en: ko.observable(true),
 				css_en: ko.observable(true)
 			}
@@ -1480,9 +1679,36 @@ var methods = {
 		});
 		cv_h.opened_files.push(new_page);
         
+        new_page.state.t_m.subscribe(function(value) {
+            if(value){
+              selectElement(null);
+              wfbuilder.highlightElement(null);
+              crsaQuickMessage("You can also use SHIFT + CLICK to test clicks.", 3000);
+                }
+        });
+        new_page.state.js_en.subscribe(function(value) {
+            if(cv_h.opened_files()[cv_h.active_file()].state.js_en()) {
+                crsaPage.setJavascriptEnabled(true);
+                crsaQuickMessage("JavaScript enabled.", 3000);
+            } else {
+                crsaPage.setJavascriptEnabled(false);
+                crsaQuickMessage("JavaScript disabled.", 3000);
+            }
+            event.preventDefault();
+        });
+        new_page.state.css_en.subscribe(function(value) {
+            if(crsaPage.hasStoppedAnimations()) {
+                crsaPage.startAnimations();
+                crsaQuickMessage("CSS Animations resumed.", 2000);
+            } else {
+                crsaPage.stopAnimations();
+                crsaQuickMessage("CSS Animations stopped.", 2000);
+            }
+            event.preventDefault();
+        });
+
 		var tmpFunc = function() {
 			// tt_h.current_title(cv_h.opened_files()[cv_h.active_file()].name() + " - ");
-            debugger;
 	        var $page = $("div.page.active");
 	        var $content = $page.find("div.content");
 	        var $iframe = $content.find("iframe");
@@ -1491,7 +1717,6 @@ var methods = {
                 wfbuilder.setSelectedPage($iframe);
             });
 
-	        var crsaPage;
 	        if (!providedCrsaPage) {
 	        	crsaPage = new CrsaPage();
 	        	crsaPage.name = name;
@@ -1518,23 +1743,25 @@ var methods = {
             crsaPage.updatePageMenus(crsaPage);
 
             updatePagesList($(".canvas"));
+
+            methods.refresh();
+            methods.addResizingOption($page);
 	    }
 	},
 	reloadPage : function(crsaPage, done, onCancel, refresh) {
         if(!refresh) crsaPage.loadingStart(onCancel);
         // else done();
-
+        debugger;
         var onPageLoaded = function() {
             var page_loaded_called = false;
-
             if(crsaPage.load_source) {
                 page_loaded_called = true;
                 crsaPage.setSource(crsaPage.load_source, null, true);
                 crsaPage.load_source = null;
-                // crsaPage.runScripts(function() {
-                //     crsaPage.callFrameworkHandler('on_page_loaded');
-                //     $.fn.crsa('updateIfNeeded');
-                // });
+                crsaPage.runScripts(function() {
+                    crsaPage.callFrameworkHandler('on_page_loaded');
+                    $.fn.crsa('updateIfNeeded');
+                });
             }
 
             crsaPage.loaded = true;
@@ -1563,6 +1790,12 @@ var methods = {
             }
 
             crsaPage.addCrsaStyles();
+
+             if(crsaPage.animationsStopped) {
+                    crsaPage.stopAnimations();
+                } else {
+                    crsaPage.startAnimations();
+                }
             crsaPage.allowReload = false;
 
             $(crsaPage.getDocument()).off('click.crsa').on('click.crsa', function() {
@@ -1575,9 +1808,9 @@ var methods = {
         		crsaPage.$iframe.off('load').on('load', function(event) {
         			console.log("iframe load");
         			if (!exists) {
-                        // crsaPage.setSource('<head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"></head><body><p>Document can not be read.</p></body>', null, false);
-                        alert('The file ' + crsaPage.url + ' could not be read.');
-        			}
+                        crsaPage.setSource('<head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"></head><body><p>Document can not be read.</p></body>', null, false);
+                        service.showAlert('<p>The file <code>' + crsaPage.url + '</code> could not be read. The error reported was <b>' + error + '</b>.</p><p>Reasons for the file not being found could be:</p><ul><li>Pinegrow doesn\'t have permissions to access the file.</li><li>The file is located on a network share with strange access path (tell us if that\'s the case)</li><li>Using <b>semicolons ;</b>, <b>?</b> or <b>#</b> in file path is not supported.</li></ul>', 'File was not found');
+                         }
                     onPageLoaded();
         		});
         	} else {
@@ -1600,7 +1833,6 @@ var methods = {
             if(refresh) args.push('pglive=1');
 
             var url_to_load = crsaPage.wrapper_url || crsaPage.url;//partials
-
             pgurl = crsaPage.getCompatibleUrl(url_to_load);
             pgurl = crsaAppendQueryToUrl(pgurl, args);
 
@@ -1639,7 +1871,7 @@ var methods = {
     zoom : function(zoom) {
         var $pages = pages.find('> div.content');
         var $iframes = pages.find('iframe');
-        var min = 200;
+        var min = minPageWidth;
 
         currentZoom = zoom;
        // methods.centerPages(centerLeft, $('#crsa-tree').width());
@@ -1791,7 +2023,83 @@ var methods = {
         $.each(crsaPages, function(i,p) {
             p.undoSetFlag = false;
         })
+    },
+    addResizingOption: function ($page) {
+        var $sizeNotice;
+        var $overlay = $page.find('> .resizer-overlay');
+        var $canvas = $('.canvas');
+        var $content = $page.find('> .content');
+        var $iframe = $page.find('iframe');
+
+        if (!$overlay.length)
+            $overlay = $('<div/>', {class:"resizer-overlay"}).appendTo($page);
+
+        var $resizer = $('<div/>', {class: 'canvas-resizer'}).appendTo($page)
+        .on('mousedown', function(e) {
+            $overlay.show();
+
+            $sizeNotice = $('<div class="quick-message page-size-notice" style="display:none;"><p>Width: <span>0</span>px</p></div>').appendTo($('body'));
+            var $sizeInNotice = $sizeNotice.find('> p > span');
+            $sizeNotice.fadeIn();
+
+            var startRight = e.pageX;
+            var startContentWidth = $content.width();
+            var startIframeWidth = $iframe.width() * $.fn.crsapages('getZoom');
+
+            $sizeInNotice.html($iframe.width());
+
+            $overlay.css('width', startContentWidth + 50 + 'px');
+            $overlay.css('height', $content.height() + 'px');
+
+            e.preventDefault();
+
+            $('body')
+                .on('mousemove.editResizer', function(m) {
+                    var right = m.pageX;
+
+                    var ContentWidth = Math.max(minPageWidth, startContentWidth - (startRight - right));
+                    $content.css('width', ContentWidth + 'px');
+                    $overlay.css('width', ContentWidth + 'px');
+
+                    $iframe.css('width', (Math.ceil(ContentWidth / $.fn.crsapages('getZoom'))) + 'px');
+                    $content.parent().css('width', ContentWidth + 10 + 'px');
+
+                    $sizeInNotice.html($iframe.width());
+                })
+                .on('mouseup.editResizer', function(e) {
+                    e.preventDefault();
+                    $overlay.hide();
+
+                    $sizeNotice = $('.page-size-notice');
+                    $sizeNotice.fadeOut(function () {
+                        $sizeNotice.remove()
+                    });
+
+                    var selectedPage = service.getSelectedCrsaPage();
+                    selectedPage.deviceWidth = Math.min(maxPageWidth, $iframe.width());
+                    // methods.showDeviceValue(selectedPage);
+
+                    var kopage = $iframe.data("crsa-kopage");
+                    kopage.state.custom_width(selectedPage.deviceWidth);
+                    kopage.state.width(selectedPage.deviceWidth);
+
+                    selectedPage.custom_width = selectedPage.deviceWidth;
+                    $('body').trigger('crsa-breakpoints-changed');
+
+                    if ($page.width() > $canvas.width() || $content.width() < minPageWidth) {
+                        methods.refresh();
+                    }
+
+                    selectedPage.rememberWidth = true;
+                    $('body').off('.editResizer');
+                    // pinegrow.stats.using('edit.pageresizer');
+                });
+        }).css('top', 0);
     }
+
+    
+
+
 }
 
 var updatePagesList = function($el) {
@@ -1823,10 +2131,11 @@ var updatePagesList = function($el) {
 }
 
 var sizePage = function($if, zoom, scroll_mode, w) {
+    w = Math.min(maxPageWidth, w);
     var $e = $if.closest('.content');
     if(!w) w = $if.width();
     var cw = Math.ceil(w * zoom);
-    var min = 200;
+    var min = minPageWidth;
     cw = Math.ceil(w * zoom) < min ? min : Math.ceil(w * zoom);
     //$if.css('height', ''); disable scroll_mode
     var h;
@@ -1869,7 +2178,7 @@ var getFitZoomScale = function() {
     var space = $('div.canvas').width();// - 12;// - centerLeft - centerRight;
     //console.log('fit ' + w + ' ' + space);
     var z = (space - sw) / w;
-    var min = 200;//230;//214;
+    var min = minPageWidth;//230;//214;
 
     w = 0;
     sw = spc;
@@ -1893,3 +2202,9 @@ var getFitZoomScale = function() {
     if(z > 1.0) z = 1.0;
     return z;
 }
+
+  function getIframeHtmlElement(iframe) {
+        var doc = iframe.contentDocument || iframe.contentWindow.document;
+        var head  = doc.getElementsByTagName('html')[0];
+        return head;
+    }

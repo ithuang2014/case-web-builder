@@ -11,6 +11,17 @@
 	<link rel="stylesheet" type="text/css" href="./lib/autoComplete/style.css">
 	<link rel="stylesheet" type="text/css" href="./lib/spectrum/spectrum.css">
 	<link rel="stylesheet" type="text/css" href="./lib/codemirror/codemirror.css">
+	<link rel="stylesheet" type="text/css" href="./lib/codemirror/addon/fold/foldgutter.css" >
+	<link rel="stylesheet" type="text/css" href="./lib/codemirror/addon/hint/show-hint.css" >
+	<link rel="stylesheet" type="text/css" href="./lib/codemirror/theme/ambiance.css" >
+	<link rel="stylesheet" type="text/css" href="./lib/codemirror/theme/blackboard.css">
+	<link rel="stylesheet" type="text/css" href="./lib/codemirror/theme/eclipse.css">
+	<link rel="stylesheet" type="text/css" href="./lib/codemirror/theme/elegant.css">
+	<link rel="stylesheet" type="text/css" href="./lib/codemirror/theme/mbo.css">
+	<link rel="stylesheet" type="text/css" href="./lib/codemirror/theme/midnight.css">
+	<link rel="stylesheet" type="text/css" href="./lib/codemirror/theme/monokai.css">
+	<link rel="stylesheet" type="text/css" href="./lib/codemirror/theme/neat.css">
+	<link rel="stylesheet" type="text/css" href="./lib/codemirror/addon/dialog/dialog.css">
 	<link rel="stylesheet" type="text/css" href="./style.css">
 	<link rel="stylesheet" type="text/css" href="./edit.css">
 	
@@ -35,27 +46,31 @@
 	
 	<div class="wfb-alert"></div>
 <!-- 	<script type="text/javascript">
-		nw.Window.get().evalNWBin(null, './frameworks/cssrules.bin');
-		nw.Window.get().evalNWBin(null, './frameworks/bootstrap3.3.7/load.bin');
+		nw.Window.get().evalNWBin(null, './frameworks/cssrules.js.bin');
+		nw.Window.get().evalNWBin(null, './frameworks/bootstrap3.3.7/load.js.bin');
+		nw.Window.get().evalNWBin(null, './frameworks/plainHtml/load.js.bin');
 		
-		nw.Window.get().evalNWBin(null, './lib/wfb-main/crsa-pages.bin');
-		nw.Window.get().evalNWBin(null, './lib/wfb-main/crsa-store.bin');
-		nw.Window.get().evalNWBin(null, './lib/wfb-main/dbservice.bin');
-		nw.Window.get().evalNWBin(null, './lib/wfb-main/i_server.bin');
-		nw.Window.get().evalNWBin(null, './lib/wfb-main/helper.bin');
-		nw.Window.get().evalNWBin(null, './lib/wfb-main/pg-components.bin');
-		nw.Window.get().evalNWBin(null, './lib/wfb-main/pg-parser.bin');
-		nw.Window.get().evalNWBin(null, './lib/wfb-main/pg-query.bin');
-		nw.Window.get().evalNWBin(null, './lib/wfb-main/templates.bin');
-		nw.Window.get().evalNWBin(null, './lib/wfb-main/viewmodel.bin');
-		nw.Window.get().evalNWBin(null, './lib/wfb-main/crsa.css.bin');
-		nw.Window.get().evalNWBin(null, './lib/wfb-main/crsa.undo.bin');
-		nw.Window.get().evalNWBin(null, './lib/wfb-main/main.bin');
-	</script>
- -->
+		nw.Window.get().evalNWBin(null, './lib/wfb-main/plugins/pg.insight.js.bin');
+		nw.Window.get().evalNWBin(null, './lib/wfb-main/crsa-pages.js.bin');
+		nw.Window.get().evalNWBin(null, './lib/wfb-main/crsa-store.js.bin');
+		nw.Window.get().evalNWBin(null, './lib/wfb-main/dbservice.js.bin');
+		nw.Window.get().evalNWBin(null, './lib/wfb-main/i_server.js.bin');
+		nw.Window.get().evalNWBin(null, './lib/wfb-main/helper.js.bin');
+		nw.Window.get().evalNWBin(null, './lib/wfb-main/pg-components.js.bin');
+		nw.Window.get().evalNWBin(null, './lib/wfb-main/pg-parser.js.bin');
+		nw.Window.get().evalNWBin(null, './lib/wfb-main/pg-query.js.bin');
+		nw.Window.get().evalNWBin(null, './lib/wfb-main/templates.js.bin');
+		nw.Window.get().evalNWBin(null, './lib/wfb-main/viewmodel.js.bin');
+		nw.Window.get().evalNWBin(null, './lib/wfb-main/crsa.css.js.bin');
+		nw.Window.get().evalNWBin(null, './lib/wfb-main/crsa.undo.js.bin');
+		nw.Window.get().evalNWBin(null, './lib/wfb-main/crsa.edit.js.bin');
+		nw.Window.get().evalNWBin(null, './lib/wfb-main/main.js.bin');
+	</script> -->
+
 	<script type="text/javascript" src="frameworks/cssrules.js"></script>
 	<script type="text/javascript" src="./frameworks/bootstrap3.3.7/load.js"></script>
 	<script type="text/javascript" src="./frameworks/plainHtml/load.js"></script>
+
     <script type="text/javascript" src="./lib/wfb-main/plugins/pg.insight.js"></script>
 	<script type="text/javascript" src="./lib/wfb-main/crsa-pages.js"></script>
 	<script type="text/javascript" src="./lib/wfb-main/crsa-store.js"></script>
@@ -71,6 +86,8 @@
 	<script type="text/javascript" src="./lib/wfb-main/crsa.undo.js"></script>
 	<script type="text/javascript" src="./lib/wfb-main/crsa.edit.js"></script>
 	<script type="text/javascript" src="./lib/wfb-main/main.js"></script>
+	
+	
 	<script type="text/javascript" src="./lib/codemirror/codemirror.js"></script>
 	<script type="text/javascript" src="./lib/codemirror/addon/hint/show-hint.js"></script>
     <script type="text/javascript" src="./lib/codemirror/addon/hint/xml-hint.js"></script>
@@ -94,7 +111,7 @@
     <script type="text/javascript" src="./lib/codemirror/addon/search/searchcursor.js"></script>
     <script type="text/javascript" src="./lib/codemirror/addon/dialog/dialog.js"></script>
 
-    <script type="text/javascript" src="./lib/emmet/emmet.js"></script>
+    <!-- <script type="text/javascript" src="./lib/emmet/emmet.js"></script> -->
 	<script type="text/javascript">
 		wfbuilder.init();
 		wfbuilder.go_startup();

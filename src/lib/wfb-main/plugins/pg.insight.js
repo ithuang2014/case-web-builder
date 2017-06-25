@@ -8,8 +8,8 @@ var PgInsight = function() {
 
     var forEachSource = function(func) {
         //current page for now
-        var project = pinegrow.getCurrentProject();
-        var page = pinegrow.getSelectedPage();
+        var project = service.getCurrentProject();
+        var page = service.getSelectedCrsaPage();
 
         if(page) {
             if(project && project.isPageInProject(page)) {

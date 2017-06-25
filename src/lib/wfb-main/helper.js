@@ -327,6 +327,24 @@ function crsaGetBaseForUrl(url) {
     return a.join('/');
 }
 
+function crsaGeneralCombineUrlWith(url, doc) {
+    if(doc.length == 0) return url;
+    while (doc.startsWith('../')) {
+      url = crsaGetBaseForUrl(url);
+      doc = doc.substr(3, doc.length);
+    }
+    if(doc.charAt(0) != '/') {
+        doc = '/' + doc;
+    }
+    return url + doc;
+}
+
+function crsaCombineUrlWith(url, doc) {
+    url = crsaGetBaseForUrl(url);
+    return crsaGeneralCombineUrlWith(url, doc);
+}
+
+
 function crsaGetAppDir() {
     if(isApp()) {
         return crsaGetBaseForUrl(crsaMakeFileFromUrl(nw.__dirname + "\\"));
@@ -484,7 +502,7 @@ function getUniqueId(pref, page, prev) {
         prev = "" + prev;
         start = parseInt(prev.replace(/[a-z]*/i, ''));
     }
-    if(!page) page = service.getSelectedPage();
+    if(!page) page = service.getSelectedCrsaPage();//sws//modify
     
     var $html = page ? page.get$Html() : null;
     if(!pref) pref = 'crsa_id_';
@@ -961,7 +979,7 @@ function makeDialog(title, cancel, ok, body) {
     html += '</div>\
             </div>';
 
-    var $d = $('<div/>', {class: "modal-dialog crsa-dialog-nonmodal"}).html(html);
+    var $d = $('<div/>', {class: "modal-dialog crsa-dialog-nonmodal crsa-modal"}).html(html);
     if(typeof body == 'object') {
         $d.find('.modal-body').append(body);
     }
@@ -1015,6 +1033,54 @@ function makeModalDialog(title, cancel, ok, body, onCancel, onOk, onBeforeShow) 
     if(onBeforeShow) onBeforeShow($o);
     $o.modal({backdrop: true});
     return $o;
+}
+
+function crsaQuickMessage(msg, duration, single, error) {
+    if(!duration) duration = 1500;
+    var top = 100;
+    var count = 0;
+
+    var quick_messages = $('.quick-message');
+
+    quick_messages.each(function(i,q) {
+        var $q = $(q);
+        var t = parseInt($q.css('top'));
+        if(top <= t) top = t + $q.outerHeight() + 0;
+        count++;
+    });
+
+    if(single && quick_messages.length > 0) return;
+
+    var spinner = '';
+    if(duration < 0) {
+        spinner = '<i class="fa fa-refresh fa-spin"></i>&nbsp;';
+    }
+
+    var $return = null;
+
+    (function() {
+        var $msg = $('<div/>', {class: 'quick-message' + (error ? ' quick-message-error' : '')}).html('<p>' + spinner + msg + '</p>').appendTo($('body')).css('opacity', 0).css('top', top + 'px');
+        $msg.animate({opacity:1}, error ? 100 : 250);
+
+        $msg.removeMessage = function() {
+
+            $msg.animate({opacity:0}, 500, function() {
+                $msg.remove();
+            });
+
+            setTimeout(function () {
+                $msg.remove();
+            }, 1000);
+        }
+        if(duration > 0) {
+            setTimeout(function () {
+                $msg.removeMessage();
+            }, duration);
+        }
+        $return = $msg;
+    })();
+
+    return $return;
 }
 
 var PgChooseFile = function(done, options) {
@@ -1312,4 +1378,173 @@ function crsaDuplicateName(orig_name, local_file, skip) {
     while(found);
 
     return name;
+}
+
+var pgPageTabs = function($dest) {
+
+    var _this = this;
+    var list = [];
+
+    var $me = $('<div class="file-tabs"><ul></ul></div>');
+    var $me_ul = $me.find('ul');
+    var $lis;
+    var visible = false;
+
+    var show_tooltips = true;
+
+    $me.prependTo($dest).hide();
+
+    this.addPage = function(crsaPage) {
+        //debugger;
+        list.push(crsaPage);
+        updateDisplay();
+    }
+
+    this.removePage = function(crsaPage) {
+        var idx = list.indexOf(crsaPage);
+        list.splice(idx, 1);
+        var vis = null;
+        for(var n = 0; n < list.length; n++) {
+            if(list[n].visible) {
+                vis = true;
+                break;
+            }
+        }
+        if(!vis && list.length) {
+            showPage(list[0], 0);
+        }
+        updateDisplay();
+    }
+
+    this.updateDisplay = function() {
+        updateDisplay();
+    }
+
+    this.getHeight = function() {
+        return visible ? 39 : 0;
+    }
+
+    this.updateHasChangesStatus = function(cp) {
+        var has = cp.hasChanges() ? ' *' : '';
+        var $li = $me_ul.find('li[data-url="' + cp.url + '"]').each(function(i, li) {
+            $(li).find('>span').html(has);
+        })
+    }
+
+    var updateDisplay = function() {
+        $me_ul.html('');
+        for(var n = 0; n < list.length; n++) {
+            var cp = list[n];
+            var $li = $('<li data-url="' + cp.url + '">' + cp.tab_name + '<span>' + (cp.hasChanges() ? ' *' : '') + '</span></li>').appendTo($me_ul).data('page-index', n);
+            if(cp.visible) {
+                $li.addClass('active');
+            }
+            if(cp.live_update) {
+                $li.addClass('view');
+            }
+        }
+        $lis = $me_ul.find('li');
+
+        $lis.on('click', function(e) {
+            e.preventDefault();
+            var $li = $(e.delegateTarget);
+            var cp = list[$li.data('page-index')];
+
+            var multi = true;
+            if(!e.ctrlKey && !e.metaKey) {
+                multi = false;
+                hideAll(cp);
+
+                if(show_tooltips) {
+                    crsaQuickMessage('CMD/CTRL + Click to show multiple pages', 3000);
+                    show_tooltips = false;
+                }
+            }
+            if(multi && cp.visible) {
+                hidePage(cp);
+            } else {
+                showPage(cp);
+            }
+            if (!cp.rememberWidth) $.fn.crsapages('refresh');
+        })
+        var old_visible = visible;
+        if(list.length > 1) {
+            $me.show();
+            visible = true;
+        } else {
+            $me.hide();
+            visible = false;
+        }
+        if(old_visible != visible) {
+            $.fn.crsapages('refresh');
+        }
+    }
+
+    var showPage = function(crsaPage, idx) {
+        if(typeof idx == 'undefined') idx = list.indexOf(crsaPage);
+        if(!$lis) return;
+        var $li = $($lis.get(idx));
+        $li.addClass('active');
+        crsaPage.show();
+        //debugger;
+        var $selected_el = null;
+        if(crsaPage.selected_element_pgid) {
+            $selected_el = crsaPage.getElementWithPgId(crsaPage.selected_element_pgid);
+        }
+        pinegrow.selectElement($selected_el);
+        //crsaPage.treeRepaintOnShow = crsaPage.treeRepaintOnShow;
+        pinegrow.setSelectedPage(crsaPage);
+    }
+
+    var hidePage = function(crsaPage, idx) {
+        if(typeof idx == 'undefined') idx = list.indexOf(crsaPage);
+        if(!$lis) return;
+        var $li = $($lis.get(idx));
+        $li.removeClass('active');
+        crsaPage.hide();
+    }
+
+    var hideAll = function(except) {
+        for(var n = 0; n < list.length; n++) {
+            var cp = list[n];
+            if(cp != except) {
+                hidePage(cp, n);
+            }
+        }
+    }
+
+    this.showPage = function(crsaPage, hide_others) {
+        if(hide_others) {
+            hideAll(crsaPage);
+        }
+        showPage(crsaPage);
+        $.fn.crsapages('refresh');
+    }
+
+    this.hidePage = function(crsaPage) {
+        hidePage(crsaPage);
+        $.fn.crsapages('refresh');
+    }
+
+    this.hideAll = function() {
+        hideAll();
+        $.fn.crsapages('refresh');
+    }
+}
+
+var showDbLoadingOverlay = function() {
+    var $wfbpanel = $(".wfb-panel");
+    var $overlay = $wfbpanel.find(".db-loading-overlay");
+    console.log($wfbpanel);
+    console.log($overlay);
+    if ($overlay.length == 0) {
+        $wfbpanel.append(
+            "<div class=\"db-loading-overlay\">\
+                <div>\
+                    <i class=\"fa fa-spinner fa-pulse\"></i>\
+                    Loading db cridential, please wait...\
+                </div>\
+            </div>"
+        );
+    }
 }

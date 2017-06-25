@@ -3,8 +3,8 @@ var CrsaHttpServer = function(status_callback) {
 
     var config = {
         directory: '',
-        port: parseInt(service.getSetting('webserver-port', '40001')),
-        host : service.getSetting('webserver-host', 'localhost')
+        port: parseInt(service.getSetting('webserver-port', '30000')),
+        host : service.getSetting('webserver-host', '127.0.0.1')
     };
 
     var libs  = {
@@ -64,10 +64,9 @@ var CrsaHttpServer = function(status_callback) {
     var getMimeType = function(file){
         file = crsaRemoveUrlParameters(file);
 
-        // sws: blocked
-        // if(pinegrow.isFileEditable(file)) {
-        //     return "text/html";
-        // }
+        if(service.isFileEditable(file)) {
+            return "text/html";
+        }
 
         var i = file.lastIndexOf("."),
             ext = (i === -1) ? "default" : file.substr(i),
@@ -189,13 +188,11 @@ var CrsaHttpServer = function(status_callback) {
     this.createProxyUrlNodeOutputFilter = function(linkNode, str, type, attr_name, attr_value, attr_quote) {
         if(type === 'attrs' && !linkNode.script_info) {
             str = crsaRemoveScripts(str);
-
             if(_this.currentRequestContext.crsaPage && !_this.currentRequestContext.crsaPage.javascriptEnabled) {
                 str = str.replace(/\son[a-z]*\="[^"]*"/g, ''); //remove onX JS attributes
             }
         }
         if(type === 'attrs' && (linkNode.tagName === 'script' || linkNode.tagName === 'link' || linkNode.tagName === 'img' || linkNode.tagName === 'base')) {
-
             var is_remote = _this.currentRequestContext.isRemote;
             var remotePath = _this.currentRequestContext.remotePath;
             var remoteHost = _this.currentRequestContext.remoteHost;
@@ -307,6 +304,7 @@ var CrsaHttpServer = function(status_callback) {
                 path = decodeURIComponent(url.pathname),
                 result = request.method + " " + path.bold,
                 fileCount = 0;
+
             // Default file to index.html
             if (path === "/") path += "index.html";
 
@@ -476,6 +474,8 @@ var CrsaHttpServer = function(status_callback) {
 
                             var html_for_browser = p.toStringWithIds(true, null, _this.createProxyUrlNodeOutputFilter);
 
+                            console.log(html_for_browser);
+
                             var rootNode = p.rootNode;
                             console.log(request.url);
                             console.log(rootNode);
@@ -545,7 +545,6 @@ var CrsaHttpServer = function(status_callback) {
             if(url.query.pgnoids && url.query.pgnoids == '1') {
                 pgnoids = true;
             }
-
             if(pglive && crsaPage) {
                 response.writeHead(200, {
                     'content-type': "text/html",
@@ -559,7 +558,6 @@ var CrsaHttpServer = function(status_callback) {
                 crsaPage.javascriptEnabled = crsaPage.javascriptEnabled || pgnoids; //if external preview
 
                 _this.setCurrentRequestContext(fullPathUrl, crsaPage.sourceNode, pgnoids /* preview mode ? */);
-
                 var html = pgnoids ? crsaPage.sourceNode.toStringOriginal(true, service.getFormatHtmlOptions(), _this.createProxyUrlNodeOutputFilter) : crsaPage.sourceNode.toStringWithIds(true, service.getFormatHtmlOptions(), _this.createProxyUrlNodeOutputFilter);
 
                 crsaPage.javascriptEnabled = orig_js_enabled;
@@ -586,8 +584,6 @@ var CrsaHttpServer = function(status_callback) {
 
                 if(fullPath.match(/\.css($|[^a-z])/g)) {
                     var path = is_remote ? fullPath : 'file://' + fullPath;
-                    // sws: blocked
-                    /* pg : This is for live created css files.
                     var cslist = findCrsaStylesheetForUrl(path);
                     var cs = cslist.length > 0 ? cslist[0] : null;
                     if(cs && cs.loaded) {
@@ -599,7 +595,6 @@ var CrsaHttpServer = function(status_callback) {
                         })
                         return;
                     }
-                    */
                 }
             }
 
@@ -788,4 +783,26 @@ var CrsaHttpServer = function(status_callback) {
     catch(err) {
 
     }
+}
+
+var PgApiServer = function(port) {
+    var io = require('socket.io')(port);
+
+    this.addEndPoint = function(endpoint, on_connection) {
+        return io
+            .of('/' + endpoint)
+            .on('connection', function (socket) {
+                on_connection(socket);
+            })
+            .on('error', function(error) {
+                console.log('Socket error ' + error);
+            })
+    }
+
+    this.addEndPoint('core', function(socket) {
+        var name = "Pinegrow";
+        var project = pinegrow.getCurrentProject();
+        if(project) name = project.getName();
+        socket.emit('introduceInstance', {name: name, port: port});
+    })
 }

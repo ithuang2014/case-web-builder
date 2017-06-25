@@ -21,6 +21,7 @@ var mainModule = function() {
     var elementUnderMouse = null;
     var elementUnderMouseData = null;
     var draggedOverInvalidParent = false;
+    var draggedOverInvalidParent_db = false;
     var draggedPlaceholderElement = null;
     var selectedElement = null;
 
@@ -33,7 +34,7 @@ var mainModule = function() {
     var crsaTemplateProjects = [];  // storage for CrsaProject objects
     var selectedCrsaProjectTemplate = null;
     
-    var needsUpdate = true;
+    var needsUpdate = false;//sws//modify
     var needsUpdateElement = null;
 
     var classManager = null;
@@ -45,6 +46,12 @@ var mainModule = function() {
     var editor = new CrsaEditor();
     var customLogic = null;
     var selectElementOnUpdate = null;
+
+    this.is_preview = function() {
+        return cv_h.opened_files()[cv_h.active_file()].state.t_m();
+    }
+
+     var pageTabs;
 
     
 
@@ -75,6 +82,16 @@ var mainModule = function() {
 
         $body.trigger('wfb-ready', service);
 
+        canvas = $('.canvas').find();
+
+        console.log(canvas);
+        pageTabs = new pgPageTabs(canvas);
+        console.log(service.pageTabs);
+
+        service.pageTabs = pageTabs;
+
+          
+
         // $(window).on('resize', function(e) {
         //     if(e.target == window) {
         //         resizeChrome();
@@ -93,7 +110,7 @@ var mainModule = function() {
 			httpServer = new CrsaHttpServer(function(status, msg, server) {
 				console.log('Internal server status: ' + status);
 				if(status != 'OK') {
-					alert('Web Form Builder was unable to start its internal webserver');
+                    service.showAlert('<p>Ups... we have a problem! <b>Web Form Builder was unable to start its internal webserver</b>. The server is <b>required</b> for Web Form Builder to function correctly.</p>', 'Web Form Builder can\'t function without its internal webserver');
 				}
 			});
             service.httpServer = httpServer;
@@ -126,7 +143,7 @@ var mainModule = function() {
 
 		su_h.idWfClass(idWfClass);		/* without this expression, the 'select' tag of 'wfClsDisplayName' has the value of ''
 										so the 'idWfClass' value is not affected to 'select' tag */
-	};
+    };
 
 	/*
 		name: init_doc
@@ -248,7 +265,10 @@ var mainModule = function() {
         1003: 'db-input-file',
 
         13: 'db-input-date',
-        1005: 'db-input-date'
+        1005: 'db-input-date',
+
+        23: 'db-input-str',
+        7: 'db-input-cur'
     }
 
     /*
@@ -291,7 +311,7 @@ var mainModule = function() {
                                                 ,attr: {\'data-record\':$data}\">\
                                     <span>\
                                         <!-- ko if: $root.t_c_list()[$data].attribAttributeType == 1 -->\
-                                            <i class=\"indicator glyphicon\" data-bind=\"css: $root.closedClass, click: function(data, event) { $root.expand($data, data, event)}\"></i>\
+                                            <i class=\"indicator fa\" data-bind=\"css: $root.closedClass, click: function(data, event) { $root.expand($data, data, event)}\"></i>\
                                         <!-- /ko -->\
                                         <span class=\"db-control\">\
                                             <span class=\"fa\" data-bind=\"css: $root.t_c_list()[$data].attribAttributeType == 1 ? $root.attrib_icons[$root.t_c_list()[$data].entType - $root.t_c_list()[$data].attribAttributeType] : $root.attrib_icons[$root.t_c_list()[$data].attribAttributeType]\"></span>\
@@ -340,12 +360,12 @@ var mainModule = function() {
 
                 db_control.data('db-t_cID', rec.t_cID);
 
-                def_fg = service.getFrameworks()["bs3.3.7"].getComponentType("form-group");
+                def_fg = service.getFrameworks()["bs3.3.7"].getComponentType("db-form-input-group");
 
                 draggedPlaceholderElement_fg = createElementFromDefinition(def_fg);
                 draggedPlaceholderElement_fg.data('db-t_cID', rec.t_cID);
                 draggedPlaceholderElement_fg.find("input").remove();
-                draggedPlaceholderElement_fg.find("label").text(rec["attribDisplayName"]);
+                draggedPlaceholderElement_fg.find("span").text(rec["attribDisplayName"]);
                 draggedPlaceholderElement_fg.append(db_control);
 
                 $el.append(draggedPlaceholderElement_fg);
@@ -409,7 +429,7 @@ var mainModule = function() {
                                                 ,attr: {\'data-record\':$data}\">\
                                     <span>\
                                         <!-- ko if: $root.t_c_list()[$data].attribAttributeType == 1 -->\
-                                            <i class=\"indicator glyphicon\" data-bind=\"css: $root.closedClass, click: function(data, event) { $root.expand($data, data, event)}\"></i>\
+                                            <i class=\"indicator fa\" data-bind=\"css: $root.closedClass, click: function(data, event) { $root.expand($data, data, event)}\"></i>\
                                         <!-- /ko -->\
                                         <span class=\"db-control\">\
                                             <span class=\"fa\" data-bind=\"css: $root.t_c_list()[$data].attribAttributeType == 1 ? $root.attrib_icons[$root.t_c_list()[$data].entType - $root.t_c_list()[$data].attribAttributeType] : $root.attrib_icons[$root.t_c_list()[$data].attribAttributeType]\"></span>\
@@ -433,27 +453,31 @@ var mainModule = function() {
         }
 
         var $html = comp_modals.oo_modal;
-        $d = showAlert($html, "Select columns to show", "Cancel", "OK", null, function() {
+        $d = showAlert($html, "Select columns to show", "Cancel", "OK", function() {
+                deleteCurrentElement($el);
+            }, function() {
             // remove canceled elements
 
             // insert column controls for added columns
             var added_cols = handler.added_cols();
-            if (added_cols.length > 1) {
+            var oo_container;
+            // if (added_cols.length > 1) {
+            if (added_cols.length > 0) {
                 def = service.getFrameworks()["bs3.3.7"].getComponentType('db-fieldset');
 
-                var $del = createElementFromDefinition(def).data('crsa-factory-def', def);
-
-                container = createElementFromDefinition(def);
+                container = createElementFromDefinition(def).data('crsa-factory-def', def);
                 container.data('db-t_cID', t_cID);
                 container.data('db-par', $el.data('db-par'));
 
                 var attribDName = cur_record["attribDisplayName"];
-                $del.find("legend").html(attribDName);
                 container.find("legend").html(attribDName);
 
+                getElementPgNode($el).remove();
                 $el.after(container).detach();
                 container.append($el);
                 pgInsertNodeAtDOMElementLocation(pgCreateNodeFromHtml(container.get(0).outerHTML), container);
+                
+                // oo_container = container;
             }
             for (var i = 0 ; i < added_cols.length ; i ++) {
                 if (added_cols[i].origin)
@@ -468,12 +492,13 @@ var mainModule = function() {
 
                 self.build_valueList_forColumn(cur_record.idEnt, rec.attribName, db_control);
 
-                def_fg = service.getFrameworks()["bs3.3.7"].getComponentType("form-group");
+                def_fg = service.getFrameworks()["bs3.3.7"].getComponentType("db-form-input-group");
 
                 draggedPlaceholderElement_fg = createElementFromDefinition(def_fg);
                 draggedPlaceholderElement_fg.data('db-t_cID', rec.t_cID);
                 draggedPlaceholderElement_fg.find("input").remove();
-                draggedPlaceholderElement_fg.find("label").text(added_cols.length > 1 ? rec["attribDisplayName"] : cur_record["attribDisplayName"]);
+                draggedPlaceholderElement_fg.find("span").text(added_cols.length > 0 ? rec["attribDisplayName"] : cur_record["attribDisplayName"]);
+                // draggedPlaceholderElement_fg.find("label").text(added_cols.length > 1 ? rec["attribDisplayName"] : cur_record["attribDisplayName"]);
                 draggedPlaceholderElement_fg.append(db_control);
 
                 $el.after(draggedPlaceholderElement_fg);
@@ -486,6 +511,7 @@ var mainModule = function() {
                 didMakeChange(selectedPage, draggedPlaceholderElement_fg, $el.parent());
                 elementWasInserted(draggedPlaceholderElement_fg, def_fg);
             }
+            debugger;
             deleteCurrentElement($el);
         });
 
@@ -522,6 +548,60 @@ var mainModule = function() {
 
             replacePgNode($el);
         });
+    }
+
+    var insertParentContainer = function($el) {
+        var t_cID = $el.data('db-t_cID');
+        var par_tcID = ab_h.t_c_list()[t_cID].par_tcID;
+
+        var def, container;
+        if (par_tcID == 0) {
+            def = service.getFrameworks()["bs3.3.7"].getComponentType('form');
+
+            container = createElementFromDefinition(def).data('crsa-factory-def', def);
+            container.data('db-t_cID', par_tcID);
+            container.addClass("text-center");
+            container.css({"padding": "0 10px 0", "margin-bottom": "15px"});
+            // container.data('db-par', $el.data('db-par'));
+
+            container.find(".form-group, .checkbox").remove();
+            // container.prepend("<h1/>");
+
+            // var attribDName = ab_h.t_c_list()[par_tcID]["attribDisplayName"];
+            // container.find("h1").text(attribDName);
+            
+            getElementPgNode($el).remove();
+            $el.after(container).detach();
+            container.find("button").before($el);
+        } else {
+            def = service.getFrameworks()["bs3.3.7"].getComponentType('db-fieldset');
+
+            container = createElementFromDefinition(def).data('crsa-factory-def', def);
+            container.data('db-t_cID', par_tcID);
+            // container.data('db-par', $el.data('db-par'));
+
+            var attribDName = ab_h.t_c_list()[par_tcID]["attribDisplayName"];
+            container.find("legend").html(attribDName);
+            
+            getElementPgNode($el).remove();
+            $el.after(container).detach();
+            container.append($el);
+        }
+
+        pgInsertNodeAtDOMElementLocation(pgCreateNodeFromHtml(container.get(0).outerHTML), container);
+
+        if (par_tcID == 0) {
+            def = service.getFrameworks()["bs3.3.7"].getComponentType('h2');
+
+            heading = createElementFromDefinition(def).data('crsa-factory-def', def);
+            var attribDName = ab_h.t_c_list()[par_tcID]["attribDisplayName"];
+            heading.text(attribDName);
+            heading.prependTo(container);
+
+            var pgEl = pgCreateNodeFromHtml(heading.get(0).outerHTML);
+            var pgContainer = getElementPgNode(container);
+            pgEl.prependTo(pgContainer);
+        }
     }
 
     /*
@@ -567,17 +647,17 @@ var mainModule = function() {
                     }
                 }
 
-                def_fg = service.getFrameworks()["bs3.3.7"].getComponentType("form-group");
+                def_fg = service.getFrameworks()["bs3.3.7"].getComponentType("db-form-input-group");
                 var $del_fg = createElementFromDefinition(def_fg).data('crsa-factory-def', def_fg);
 
                 draggedPlaceholderElement_fg = createElementFromDefinition(def_fg);
                 draggedPlaceholderElement_fg.data('db-t_cID', t_cID);
                 draggedPlaceholderElement_fg.data('db-par', factoryCopyHelper);
                 $del_fg.find("input").remove();
-                $del_fg.find("label").text(rec["attribDisplayName"]);
+                $del_fg.find("span").text(rec["attribDisplayName"]);
                 $del_fg.append($del);
                 draggedPlaceholderElement_fg.find("input").remove();
-                draggedPlaceholderElement_fg.find("label").text(rec["attribDisplayName"]);
+                draggedPlaceholderElement_fg.find("span").text(rec["attribDisplayName"]);
                 draggedPlaceholderElement_fg.append(draggedPlaceholderElement);
 
                 if (attribAttributeType != 1000000) {
@@ -633,6 +713,12 @@ var mainModule = function() {
                     orig_def = def;
                     draggedPlaceholderElement.data('crsa-def', null);
 
+                    /* Insert parent table element */
+                    if (draggedOverInvalidParent_db) {
+                        draggedOverInvalidParent = false;
+                        insertParentContainer(draggedPlaceholderElement);
+                    }
+
                     if(draggedOverInvalidParent && !getIframeOfElement(draggedPlaceholderElement)) {
                         if(def.invalid_drop_msg) {
                             remove = true;
@@ -666,6 +752,7 @@ var mainModule = function() {
                     }
                 }
                 draggedOverInvalidParent = false;
+                draggedOverInvalidParent_db = false;
                 elementUnderMouse = null;
 
                 methods.clearUndoSetFlag();
@@ -780,7 +867,9 @@ var mainModule = function() {
         });
 
         $('body').on('crsa-element-selected', function(e, crsaPage) {
+            
             if(currentPage != selectedCrsaPage) {
+
                 pageChanged(selectedCrsaPage);
             }
         });
@@ -1142,7 +1231,8 @@ var mainModule = function() {
         if(selectedElement && selectedElement.type == 'element') {
             sel_pgid = selectedElement.data.attr('data-pg-id');
         }
-        var is_selected_page = crsaPage == service.getSelectedPage();
+
+        var is_selected_page = crsaPage == service.getSelectedCrsaPage();
 
         if(is_selected_page) {
             selectElement(null);
@@ -1191,7 +1281,8 @@ var mainModule = function() {
             }
 
             $iframe.one('load', function() {
-                if (crsaPage == service.getSelectedPage()) {
+
+                if (crsaPage == service.getSelectedCrsaPage()) {
                     self.updateStructureAndWireAllElemets(crsaPage.$iframe);
                 } else {
                     crsaPage.treeRepaintOnShow = crsaPage.get$Html();
@@ -1243,7 +1334,11 @@ var mainModule = function() {
 	this.openPage = function(url, done, onSourceLoaded, providedCrsaPage, onCssLoaded, options) {
 		var first = cv_h.opened_files().length == 0;
 
-		tmpFunc = function($iframe, crsaPage) {
+        idWfClass = su_h.idWfClass();
+		
+        tmpFunc = function($iframe, crsaPage) {
+            su_h.idWfClass(idWfClass);
+
 			if (onSourceLoaded) onSourceLoaded(crsaPage);
             
             if (!crsaPage.frameworks_added) {
@@ -1294,6 +1389,7 @@ var mainModule = function() {
             }, crsaPage.wrapper_url ? true : false /* incl dynamic stylesheets */);
 
 			self.addScrollHandlerToFrame($iframe);
+
             if(done) done(crsaPage);
 
             crsaPage.loadingDone();
@@ -1352,6 +1448,7 @@ var mainModule = function() {
             } else {
                 problems.add('element', getElementName($el), 'change');
             }
+
             if(!problems.ok()) {
                 showAlert(problems.toString(), "Can't edit this element");
                 selectElement($el);
@@ -1382,6 +1479,75 @@ var mainModule = function() {
         $rules.on('crsa-cm-class-add', function(event, cls) {
             if(selectedElement && selectedElement.type == 'element') {
                 doClassSelected(selectedElement.data, cls);
+            }
+        });
+
+
+
+
+        //sws//add
+        var doClassSelected_ToggleEnable = function($el, cls, remove) {
+            var strClassPoint = cls;
+            cls = cls.replace('.','');
+            var name = getElementName($el);
+
+            var node = getElementPgNode($el);
+            var problems = new pgParserSourceProblem(node, $el);
+
+
+            if(node) {
+                if(remove) {
+                    if($el.hasClass(cls)) {
+                        if(node.canRemoveClass(cls)) {
+
+                        } else {
+                            //element has class, but source doesn't
+                            //class was added by script
+
+                            //problems.add('class', cls, 'remove');
+                        }
+                    }
+                }
+            } else {
+                problems.add('element', getElementName($el), 'change');
+            }
+
+            if(!problems.ok()) {
+                showAlert(problems.toString(), "Can't edit this element");
+                selectElement($el);
+                return;
+            }
+
+
+            if(!canMakeChange(node, 'remove_class', cls)) return;
+
+            willMakeChange(selectedPage, name + ' | Remove class ' + cls);
+
+
+            //sws//add
+            if ($el.hasClass(cls)) {
+                $el.removeClass(cls);
+                crsaQuickMessage("Class <b>" + cls + "</b> " + "disabled from <b>" + name + "</b>.");
+            }else{
+                $el.addClass(cls);
+                crsaQuickMessage("Class <b>" + cls + "</b> " + "enabled to <b>" + name + "</b>.");
+            }
+            
+
+            //sws//block: node.removeClass(cls);
+
+            //console.log(node.toStringWithIds());
+
+            selectElement($el);
+            //sws//block: service.updateTree($el);
+            //sws//block: didMakeChange(selectedPage, $el);
+        }
+
+        //sws//add
+        $rules.on('crsa-cm-class-enable', function(event, cls) {
+            
+            if(selectedElement && selectedElement.type == 'element') {
+                doClassSelected_ToggleEnable(selectedElement.data, cls);
             }
         });
 
@@ -1425,7 +1591,7 @@ var mainModule = function() {
                 $db_ctrList.addClass("tree");
                 var html = "<li data-bind=\"css: t_c_list()[0].attribAttributeType == 1 ? 'branch': ''\">\
                                 <span>\
-                                    <i class=\"indicator glyphicon\" data-bind=\"if: t_c_list()[0].attribAttributeType == 1,css: closedClass, click: function(data, event) { expand(0, data, event)}\"></i>\
+                                    <i class=\"indicator fa\" data-bind=\"if: t_c_list()[0].attribAttributeType == 1,css: closedClass, click: function(data, event) { expand(0, data, event)}\"></i>\
                                     <span class=\"db-control\">\
                                         <span class=\"fa\" data-bind=\"css: t_c_list()[0].attribAttributeType == 1 ? attrib_icons[t_c_list()[0].entType - t_c_list()[0].attribAttributeType] : attrib_icons[t_c_list()[0].attribAttributeType]\"></span>\
                                         <span data-bind=\"text: t_c_list()[0].attribName\"></span>\
@@ -1452,6 +1618,8 @@ var mainModule = function() {
     		this.prepare_panels();
         }
 
+        self.prepare_dbCtrlData();
+
 		var url = service.bs_framesrc_url;
 		url = crsaIsAbsoluteUrl(url) ? url : crsaGetBaseForUrl(nw.__dirname + "\\") + '/' + url;
 		url = "file:///" + url;
@@ -1463,9 +1631,40 @@ var mainModule = function() {
             self.scrollCanvasToPage(cp.$iframe);
             selectedCrsaProjectTemplate = project;
 		});
+	};
+
+    this.open_recent = function(file_url) {
+        if (cv_h.opened_files().length == 0) {
+            self.prepare_panels();
+        }
 
         self.prepare_dbCtrlData();
-	};
+
+        var file = crsaMakeFileFromUrl(file_url);
+        var url = crsaMakeUrlFromFile(file);
+        var ocp = service.getCrsaPageByUrl(url);
+        
+        if(ocp) {
+            crsaQuickMessage(ocp.name + ' is already open.');
+            if(!ocp.changed) {
+            }
+            return;
+        }
+
+        var project = crsaTemplateProjects[0];
+        var tmpFunc = function(cp) {
+            cp.crsaProjectTemplate = project;
+            cp.setLocalFile(file);
+            selectedCrsaProjectTemplate = project;
+
+            rf_h.addUrl(cp.url);
+
+            self.scrollCanvasToPage(cp.$iframe);
+        };
+
+        self.openPage(url, null, tmpFunc);
+
+    }
 
     /*
         name: open_existing_page
@@ -1495,6 +1694,8 @@ var mainModule = function() {
                     cp.crsaProjectTemplate = project;
                     cp.setLocalFile(file);
                     selectedCrsaProjectTemplate = project;
+
+                    rf_h.addUrl(cp.url);
 
                     self.scrollCanvasToPage(cp.$iframe);
 
@@ -1563,13 +1764,17 @@ var mainModule = function() {
                 var first_save = cp.localFile == null;
                 
                 cp.save(function(err) {
-                    if(!err) {
-                        console.log('File saved!');
+                    if(err) {
+                        crsaQuickMessage("File not saved!");
+                        return;
                     }
+
+                    console.log('File saved!');
 
                     var kopage = cp.$iframe.data("crsa-kopage");
                     kopage.name(cp.name);
-                    
+
+                    rf_h.addUrl(cp.url);
                 }, true, true);
 
             } else {
@@ -1595,13 +1800,17 @@ var mainModule = function() {
         // if(codeEditor) codeEditor.refreshBeforeSaveIfNeeded();
 
         cp.save(function(err) {
-            if(!err) {
-                console.log('File saved as!');
-                // recentFiles.add(cp.url);
-                // pageTabs.updateDisplay();
+            if(err) {
+                crsaQuickMessage("File not saved!");
+                return;
             }
+
+            console.log('File saved as!');
+
             var kopage = cp.$iframe.data("crsa-kopage");
             kopage.name(cp.name);
+
+            rf_h.addUrl(cp.url);
         }, true, true, true);
 
     }
@@ -1658,48 +1867,34 @@ var mainModule = function() {
 	*/
 	this.show_options_modal = function() {
         var title = "Web Form Builder Options";
-        var body = "<div class=\"checkbox\">\
-                        <label class=\"control-label\">\
-                            <input type=\"checkbox\" class=\"show-placeholders\">\
-                            <b>Show placeholders</b> on empty elements\
-                        </label>\
-                        <p class=\"help-block\">Empty divs (and similar elements) have height 0px and are thus not visible on the page. Enable this option to apply min-height:100px to empty divs, sections and similar elements. This only affects how elements are shown in Web Form Builder, display\
-                            in browser is not affected. Reload pages to apply the setting.</p>\
-                    </div>\
-                    <div class=\"form-group\">\
-                        <label class=\"control-label\" for=\"formInputLocalhost\">Internal Webserver hostname</label>\
-                        <input id=\"formInputLocalhost\" class=\"form-control webserver-host\" />\
-                        <p class=\"help-block\">Web Form Builder uses internal webserver to access local HTML files. Change the value if you experience problems with the default setting.</p>\
-                    </div>\
-                    <div class=\"form-group\">\
-                        <label class=\"control-label\" for=\"formInputPort\">Internal Webserver ports</label>\
-                        <input id=\"formInputPort\" class=\"form-control webserver-port\" />\
-                        <p class=\"help-block\">Web Form Builder uses internal webserver to access local HTML files. Select a free port and make sure that incoming connections are not blocked by a firewall. Each form builder window needs a free port. Each subsequent window will look for the first\
-                            free port above the one specified here.</p>\
-                    </div>\
-                    <div class=\"form-group\">\
-                        <label class=\"control-label\" for=\"formInputCodeSize\">Font size in Code editors</label>\
-                        <input id=\"formInputCodeSize\" class=\"form-control code-size\" />\
-                        <p class=\"help-block\">Default is 12px. Don't forget to add px or another unit.</p>\
-                    </div>\
-                    <div class=\"form-group\">\
-                        <label class=\"control-label\" for=\"formInput2\">Code indent size</label>\
-                        <select id=\"formInput2\" class=\"form-control html-indent-size\">\
-                            <option>1</option>\
-                            <option>2</option>\
-                            <option>3</option>\
-                            <option>4</option>\
-                            <option>8</option>\
-                        </select>\
-                        <p class=\"help-block\">Size of HTML code indent.</p>\
-                    </div>";
-        var $options = service.makeModal(body, title, "Cancel" , "OK");
-		$options = $(comp_modals.options);
+        var body = comp_modals.options;
+        var $options = service.showAlert(body, title, "Cancel" , "OK", null, function() {
+            service.setSetting("show-placeholders", $options.find("input.show-placeholders").is(":checked")?"1":"0");
+            
+            var restart = $options.find("input.webserver-host").val() != service.getSetting("webserver-host", "127.0.0.1");
+            restart = restart || ($options.find("input.webserver-port").val() != service.getSetting("webserver-port", "30000"));
+            if (restart) {
+                service.showAlert("Save settings and restart Web Form Builder to activate the change.", "Alert");
+            }
+            service.setSetting("webserver-host", $options.find("input.webserver-host").val());
+            service.setSetting("webserver-port", $options.find("input.webserver-port").val());
+            service.setSetting("code-theme-cm", $options.find("select.code-theme").val());
+            service.setSetting("code-size", $options.find("input.code-size").val());
+            service.setSetting("html-indent-size", $options.find("select.html-indent-size").val());
+
+            codeEditor.setFontSize(service.getSetting("code-size"));
+        });
+
+        $options.find("input.show-placeholders").attr("checked", service.getSetting("show-placeholders", "1") == "1" ? true : false);
+        $options.find("input.webserver-host").val(service.getSetting("webserver-host", "127.0.0.1"));
+        $options.find("input.webserver-port").val(service.getSetting("webserver-port", "30000"));
+        $options.find("input.code-size").val(service.getSetting("code-size", "12px"));
+        $options.find("select.code-theme").val(service.getSetting("code-theme-cm", "default"));
+        $options.find("select.html-indent-size").val(service.getSetting("html-indent-size", "4"));
 
 		$options.on('hidden.bs.modal', function(event) {
 			$(event.target).remove();
 		});
-		$options.modal();
 	}
 	
     this.undo = function() {
@@ -1709,6 +1904,7 @@ var mainModule = function() {
             if(us.isAtTheTip()) {
                 us.add("Undo", true);
             }
+            if (!us.canUndo()) return;
             us.undo(function(n) {
                 if(n) {
                     didMakeChange(selectedPage);
@@ -1726,6 +1922,7 @@ var mainModule = function() {
     this.redo = function() {
         if(selectedPage) {
             var crsaPage = getCrsaPageForIframe(selectedPage);
+            if (!crsaPage.undoStack.canRedo()) return;
             crsaPage.undoStack.redo(function(n) {
                 if(n) {
                     didMakeChange(selectedPage);
@@ -1842,7 +2039,11 @@ var mainModule = function() {
     }
 
     this.getSelectedPage = function() {
-        return selectedCrsaPage;
+        return selectedPage;
+    }
+
+    this.getSelectedCrsaPage = function() {
+        return selectedCrsaPage;        
     }
 
     this.addRulesDefinition = function(def) {
@@ -1889,61 +2090,6 @@ var mainModule = function() {
             $('<li/>').html(getObjectName(obj, def, true, true, false, true)).appendTo($desc);
         }
     }
-    this.updateStructureAndWireAllElemets = function($iframe, $el, skip_select) {
-        //$el = null;
-        var $update_els = $el;
-        if($el && $el.length > 0) {
-            $el = $($el.get(0));
-        }
-
-        var start_ms = (new Date()).getTime();
-
-        if($iframe) {
-            methods.buildTree($iframe, $el);
-        }
-
-        var $tree = $('#crsa-tree');
-        var scrollTop = $tree.scrollTop();
-
-        var $repaintTreeBranch;
-
-        var $treeRoot = getTreeRootForElement($el, $iframe);
-
-        if($el) {
-            if(customLogic.getTreeRootForElement) {
-                $repaintTreeBranch = $treeRoot;
-            } else {
-                $repaintTreeBranch = $update_els;
-            }
-        } else {
-            $repaintTreeBranch = $treeRoot;
-        }
-
-        methods.createTreeWidget($iframe, $tree, $treeRoot, $repaintTreeBranch, function() {
-            $tree.scrollTop(scrollTop);
-        });
-
-        if(!$iframe) return;
-
-        needsUpdate = false;
-        needsUpdateElement = null;
-
-        var cp = getCrsaPageForIframe($iframe);
-        if(!cp.scrollMode && !skip_select) {
-            canvas.crsapages('autoSizePage', $iframe, cp.scrollMode);
-        }
-
-        if(inlineMenu && !skip_select) {
-            inlineMenu.remove();
-            inlineMenu = null;
-        }
-        if(selectedElement && selectedElement.type == 'element' && !skip_select && selectedCrsaPage == cp) {
-            selectElement(selectedElement.data);
-        }
-        var elapsed_ms = (new Date()).getTime() - start_ms;
-        //console.log('Doc refresh took '+ elapsed_ms + ' ms');
-        return this;
-    }
 
     this.updateIfNeeded = function() {
         if(needsUpdate) {
@@ -1958,6 +2104,7 @@ var mainModule = function() {
         }
     }
     this.propertyChanged = function(obj, prop, value, oldValue, fieldDef, $field, eventType, values) {
+
         //log(prop + ' = ' + value);
         var sel = null;
 
@@ -2221,7 +2368,7 @@ var mainModule = function() {
                 selectedPage.crsacss('renameLessRule', rule, value, function(new_rule, changed_num) {
                     obj.data = new_rule;
                     if(changed_num) {
-                        methods.updateStructureAndWireAllElemets(selectedPage);
+                        wfbuilder.updateStructureAndWireAllElemets(selectedPage);
                     }
                     if(selectedElement && selectedElement.type == 'element') {
                         selectElement(selectedElement.data);
@@ -2759,7 +2906,7 @@ var mainModule = function() {
             var events = 'input change';
 
             $input.on(events, function(event, skip_undo) {
-                
+
                 var $input = $(event.delegateTarget);
 
                 if (!$input.is('input') && pgAutoComplete) {
@@ -2864,6 +3011,7 @@ var mainModule = function() {
                         $input.val(values[prop]);
                     }
 
+                    needsUpdate = true;//sws//add
                     if(needsUpdate) {
                         if(!selectElementOnUpdate && obj.type == 'element') {
                             selectElementOnUpdate = obj.data;
@@ -2889,14 +3037,44 @@ var mainModule = function() {
     }
 
     this.showVariables = function() {
-            selectedPage.crsacss('showVariables');
+        selectedPage.crsacss('showVariables');
     }
 
     this.showProperties = function(obj, $dest, def) {
-
+            
             var profile = new CrsaProfile();
 
             var $scrollParent = null;
+
+            
+            //sws//add
+            if(obj && obj.type == 'element') {
+
+                var iData_pg_id0 = $("div#prop_").data("data-pg-id");
+                var iData_pg_id1 = obj.data.attr("data-pg-id");
+                
+                $("div#prop_").data("data-pg-id", iData_pg_id1);
+                
+                if (iData_pg_id0 && iData_pg_id0 == iData_pg_id1) {
+                   
+                    $("div#prop_").data("iProp_Height", $("div#prop_").height());
+                    $("div#prop_").data("iScrollTop",   $("div.wfb-comp.pc-panel div.tab-content").scrollTop());
+                
+                }else{
+                    
+                    $("div#prop_").data("iProp_Height", 0);
+                    $("div#prop_").data("iScrollTop",   0);
+                }
+
+            }else{
+                
+            		$("div#prop_").data("data-pg-id",   0);
+                    $("div#prop_").data("iProp_Height", 0);
+                    $("div#prop_").data("iScrollTop",   0);
+            }
+
+
+
             if(typeof $dest == 'undefined' || !$dest) {
                 
                 $dest = $('#prop_');
@@ -2991,12 +3169,12 @@ var mainModule = function() {
 
                     return;
                 }
-                var locked = service.isElementLocked(pgEl);
+                /*var locked = service.isElementLocked(pgEl);
                 if(locked) {
                     $('<div class="alert alert-info">The element is locked: ' + locked + '</div>').appendTo($dest);
 
                     return;
-                }
+                }*/
 
                 selectedCrsaPage.callFrameworkHandler('on_show_properties', sections_array, $el, pgEl, defs, $dest);
             }
@@ -3091,14 +3269,32 @@ var mainModule = function() {
 
             profile.show('showProperties');
 
-
-            //sws//add
             $("ul.props-desc-obj").hide();
             $("a.cm-prop-addrule").hide();
             $("div.crsa-field-pinegrow_name").hide();
 
 
+        
+            //sws//add
+            var iProp_Height0 = $("div#prop_").data("iProp_Height");
+            var iProp_Height1 = $("div#prop_").height();
+            var iScrollTop    = $("div#prop_").data("iScrollTop");
+            var $tab_content  = $("div.wfb-comp.pc-panel div.tab-content");
+           
+            if (iProp_Height0 && iProp_Height0 != iProp_Height1) {
 
+                 $tab_content.scrollTop(iScrollTop + iProp_Height1 - iProp_Height0);   
+                 
+            }else if (iProp_Height0 && iProp_Height0 == iProp_Height1) {
+                
+                $tab_content.scrollTop(iScrollTop);  
+            
+            }else if (!iProp_Height0) {
+                
+                $tab_content.scrollTop(0);  
+            
+            }
+  
 
     }
 
@@ -3153,8 +3349,9 @@ var mainModule = function() {
 
         // if(!$iframe) return;
 
-        // needsUpdate = false;
-        // needsUpdateElement = null;
+        //sws//add
+        needsUpdate = false;
+        needsUpdateElement = null;
 
         var cp = getCrsaPageForIframe($iframe);
         // if(!cp.scrollMode && !skip_select) {
@@ -3191,6 +3388,7 @@ var mainModule = function() {
                     $a.addClass(a.class);
                 }
                 $a.on('click', function(e) {
+
                     e.preventDefault();
                     var a = $(e.delegateTarget).data('action');
                     a.action(current, e);
@@ -3209,11 +3407,13 @@ var mainModule = function() {
     };
     this.getActionsMenu = function () {
         var def_actions = [
-            {label: "Add Link", action: function() {
-                
-            }},
-            {label: "Add New CSS Class", action: function() {
-                
+            {label: "Add New CSS Class", action: function(current, $el) {
+                selectElement(current);
+
+                $("a[href='#prop_']").click();
+
+                $("#prop_ div.crsa-field.crsa-field-rules.crsa-field-rules li.link.crsa-input-add-class > a").click();
+
             }},
             {label: "Add Lorem Ipsum", action: function($el) {
                 var selectedElement = getObjectFromElement($el)
@@ -3245,7 +3445,12 @@ var mainModule = function() {
                 editor.startEdit($('.crsa-edit-toolbar'), $el);
             }},
             {label: "Edit code", class: 'action-edit-code', /*  //sws//block:  kbd: 'CMD H',*/ manage_change: true, action: function($el) {
-                editElementSource($el);
+                //sws//block:   editElementSource($el); 
+
+                //sws//add
+                wfbuilder.editCode(selectedCrsaPage.$iframe);
+                selectElement($el);
+                 
             }},
             {label: "Delete", class: 'action-delete-element', manage_change: true, action: function ($el) {
                 deleteCurrentElement($el);
@@ -3253,8 +3458,10 @@ var mainModule = function() {
             {label: "Duplicate", class: 'action-duplicate-element', manage_change: true, action: function ($el) {
                 duplicateCurrentElement($el);
             }},
-            {label: "Properties", action: function() {
-                
+            {label: "Properties", action: function(current) {
+                selectElement(current);
+                $("a[href='#prop_']").click();
+
             }}
 
             /*   {label: "Trigger click", action: function($el) {
@@ -3262,6 +3469,7 @@ var mainModule = function() {
              }}*/
         ];
 
+        
         //sws//block:
         // if(isApp()) {
         //     def_actions.push(
@@ -3342,13 +3550,13 @@ var mainModule = function() {
             if(!remove) $(doc).on('keydown.crsa', methods.processKeydownEvent);
 
 			doc.removeEventListener('contextmenu', onContextMenu, true);
-			if(!remove) doc.addEventListener('contextmenu', onContextMenu, true, false);
+			if(!remove) doc.addEventListener('contextmenu', onContextMenu, true,false);
 
 			doc.removeEventListener('click', onElementClick, true);
 			if(!remove) doc.addEventListener('click', onElementClick, true, false);
 
-			// doc.removeEventListener('dblclick', onElementDoubleClick, true);
-			// if(!remove) doc.addEventListener('dblclick', onElementDoubleClick, true, false);
+			doc.removeEventListener('dblclick', onElementDoubleClick, true);
+			if(!remove) doc.addEventListener('dblclick', onElementDoubleClick, true, false);
 
 			// doc.removeEventListener('input', onElementInput, true);
 			// if(!remove) doc.addEventListener('input', onElementInput, true, false);
@@ -3380,9 +3588,11 @@ var mainModule = function() {
     }
 
     this.getActionsMenuFor = function ($el) {
+
         var def_actions = [];
-        var selectedElement = getObjectFromElement($el);
-        var def = getDefinitionForObject(selectedElement, true);
+        var selectedElement_ = getObjectFromElement($el);//sws//modify
+        var def = getDefinitionForObject(selectedElement_, true);//sws//modify
+
 
         // sws: blocked
         // if (def) {
@@ -3418,6 +3628,149 @@ var mainModule = function() {
         //         });
         //     }
         // }
+
+
+
+
+        //sws//add
+        var isAddLink = function(){
+
+            if($el.is('script') || $el.find('script').length > 0) {
+                return false;
+            }
+
+            if($el.is('body') || $el.is('head') || $el.find('body').length) {
+                 return false;
+            }
+
+            if($el.is('a')  || $el.parents().is('a')  || $el.find('a').is('a')) {
+                 return false;
+            }
+
+            return true;
+        }
+
+        //sws//add
+        var isRemoveLink = function(){
+
+            if($el.is('a')) {
+                return true;
+            }else{
+                return false;
+            }
+        }
+
+        if (isAddLink()) {
+
+            def_actions.unshift({label: "Add link",  class: 'action-add-link', manage_change: true, action: function ($el) {
+                
+                var $parent = $el.parent();
+
+                willMakeChange(selectedPage, "Edit element code / " + getElementName($el));
+
+                var applySource = function(s, force) {
+
+                    s = $.trim(s);
+
+                    try{
+                        
+                        var pgEl = getElementPgNode($el);
+                        var pgNewEl = pgCreateNodeFromHtml(s);
+                        service.httpServer.setCurrentRequestContext(selectedCrsaPage.url, selectedCrsaPage.sourceNode);
+                        var html = pgNewEl.toStringWithIds(true, service.getFormatHtmlOptions(), function(linkNode, str, type) {
+                            if(type == 'node' && linkNode.tagName == 'script' && linkNode.getAttr('type') != 'php') {
+                                return '<script data-pg-id="' + linkNode.getId() + '"></script>';
+                            }
+                            return service.httpServer.createProxyUrlNodeOutputFilter(linkNode, str, type);
+                        });
+
+                        if(pgNewEl.validateTree().length && !force) {
+                            throw 'Syntax error - pgParser';
+                        }
+
+                        // console.log(html);
+                        var $newEl = $(getIframeDocument(selectedPage.get(0)).createElement('div')).append(html).contents();
+                        // console.log($newEl);
+
+                        if($newEl.length != 1 && !force) {
+                            throw "Syntax error - DOM";
+                        }
+
+                        $el.replaceWith($newEl);
+                        if(selectedElement && selectedElement.type == 'element'
+                            && (selectedElement.data.get(0) == $el.get(0)
+                            || jQuery.contains($el.get(0), selectedElement.data.get(0)))
+                            ) {
+                            selectedElement = getObjectFromElement($newEl);
+                        }
+                        $el = $newEl;
+
+                        pgEl.replaceWith(pgNewEl);
+                        pgEl.remove();
+                        pgEl = pgNewEl;
+                        // setDialogNotice($dialog, '');
+                        // $chk.show();
+
+                        last_good_source = s;
+                        has_error = false;
+                        return true;
+                    }
+                    catch(err) {
+                        has_error = true;
+                        // $chk.hide();
+                        // setDialogNotice($dialog, 'Syntax error - or - You\'re editing more than one HTML element!', 'text-danger');
+                        
+                        //sws//add
+                        crsaQuickMessage("Can not add link", 1000);
+                    }
+                    return false;
+                }
+
+
+                if(applySource("<a href=''>" + $el.get(0).outerHTML + "</a>")) {
+                    
+                    ignore_select_element = true;
+                    wfbuilder.setNeedsUpdateDelayed($parent);
+                    didMakeChange(selectedPage);
+
+                    //sws//add
+                    selectElement($el);
+                    crsaQuickMessage("The link was added, Edit settings in PROP panel", 2000);
+
+                }
+
+            }});
+        }else if(isRemoveLink()){
+
+            def_actions.unshift({label: "Remove link",  class: 'action-remove-link', manage_change: true, action: function ($el) {
+                
+                var $parent = $el.parent();
+                    
+                var pgCurrent = getElementPgNode($el);
+                if(!canMakeChange(pgCurrent, 'remove_tags')) return;
+
+                willMakeChange(selectedPage, "Remove tags / " + getElementName($el));
+
+                var $firstElement = $($el.contents().get(0));
+
+                $el.replaceWith($el.contents());
+
+                if(pgCurrent) pgCurrent.detag();
+
+                highlightElement(null);
+                selectElement($firstElement);//sws//add
+
+                wfbuilder.setNeedsUpdateDelayed($parent);
+                didMakeChange(selectedPage);
+
+                //sws//add
+                crsaQuickMessage("The element was removed", 2000);
+
+                return;
+
+            }});
+
+        }
 
         def_actions = def_actions.concat(this.getActionsMenu());
 
@@ -3703,7 +4056,7 @@ var mainModule = function() {
 
     var collapse_on_select = [];
 
-    function selectElement($e, user_action) {
+    window.selectElement=function($e, user_action) {
         debugger;
         var profile = new CrsaProfile();
 
@@ -3738,10 +4091,6 @@ var mainModule = function() {
         // if(cp.treeCurrentRoot == null || treeRoot == null || treeRoot.get(0) != cp.treeCurrentRoot.get(0)) {
         //     methods.createTreeWidget($this, $('#crsa-tree'), treeRoot);
         // }
-
-        if(selectedPage == null || selectedPage.get(0) != $this.get(0)) {
-            wfbuilder.setSelectedPage($this);
-        }
 
         var new_collapse_on_select = [];
         for(var i = 0; i < collapse_on_select.length; i++) {
@@ -3801,6 +4150,7 @@ var mainModule = function() {
             inlineMenu.remove();
             inlineMenu = null;
         }
+
         var def = null;
         if(current) {
             //profile.show('se 2');
@@ -4025,7 +4375,7 @@ var mainModule = function() {
                         if(!invalid_target) {
 
                             if($start_iframe.get(0) != $end_iframe.get(0)) {
-                                methods.updateStructureAndWireAllElemets($start_iframe);
+                                wfbuilder.updateStructureAndWireAllElemets($start_iframe);
                                 setSelectedPage($end_iframe);
                                 didMakeChange($start_iframe);
                             } else {
@@ -4039,7 +4389,7 @@ var mainModule = function() {
 
                             if(elementUnderMouse) {
                                 // sws: blocked
-                                // methods.updateStructureAndWireAllElemets($end_iframe);
+                                wfbuilder.updateStructureAndWireAllElemets($end_iframe);
                                 didMakeChange($end_iframe, draggedPlaceholderElement, draggedPlaceholderElement.parent());
                                 // elementWasMoved(draggedPlaceholderElement, getCrsaPageForIframe($start_iframe), getCrsaPageForIframe($end_iframe))
                                 // //console.log('dropped');
@@ -4155,19 +4505,21 @@ var mainModule = function() {
     }
 
     function onContextMenu (event) {
+        
         event.preventDefault();
 
         var el = event.target;
         var $el = $(el);
 
-        var selectedPage = service.getSelectedPage();
+        var selectedCrsaPage = service.getSelectedCrsaPage();
 
         var contextMenu = new CrsaContextMenu();
 
         var def_actions = wfbuilder.getActionsMenuFor($el);
         var pgel = getElementPgNode($el);
         if(pgel) {
-            selectedPage.callFrameworkHandler('on_build_actions_menu', def_actions, pgel, $el);
+
+            selectedCrsaPage.callFrameworkHandler('on_build_actions_menu', def_actions, pgel, $el);
         }
 
         contextMenu.actions = def_actions;
@@ -4197,60 +4549,66 @@ var mainModule = function() {
 
         var crsaPage = getCrsaPageOfElement($el);
 
+        var current = selectedElement ? selectedElement.data : null;
+        var $this = $el ? getIframeOfElement($el) : (current ? getIframeOfElement(current) : null);
+
+        if(selectedPage == null || selectedPage.get(0) != $this.get(0)) {
+            wfbuilder.setSelectedPage($this);
+        }
+
+        
+        if(event.shiftKey || wfbuilder.is_preview()) {
+            if($el.attr('href')) {
+                debugger;
+                //pinegrow.showQuickMessage('Link!');
+
+                var url = $el.attr('href');
+                var url_no_params = crsaRemoveUrlParameters(url);
+                url = crsaPage.makeAbsoluteUrl(url);
+
+                if(url_no_params.length) {
+                    if(crsaIsFileUrl(url)) {
+                        if(crsaIsFileOrDir(crsaMakeFileFromUrl(url)) !== 'file') {
+                            service.showQuickMessage($el.attr('href') + ' not found!', 3000, false, 'error');
+                            return false;
+                        }
+                    }
+                    service.showQuickMessage('Opening ' + $el.attr('href') + '...');
+                    service.openOrShowPage(url, null, true, true);
+                    event.stopPropagation();
+                    event.preventDefault();
+                } else {
+                    if((url_no_params == '' || crsaRemoveUrlParameters(url) == crsaPage.url) && el.hash) {
+                        if(event.shiftKey) {
+                            //fake it
+                            var hash = el.hash;
+                            crsaPage.getWindow().location.hash = hash;
+                            return false;
+                        }
+                    }
+
+                    return true;
+
+                }
+
+            } else {
+                return true;
+            }
+        }
+
+        // if(!getType($el)) return true;
+
         // sws: blocked
-        // if(event.shiftKey || preview) {
-        //     highlightPreviewClick();
-        //     if($el.attr('href')) {
-        //         //debugger;
-        //         //pinegrow.showQuickMessage('Link!');
+        if($el.attr('data-pg-allow-click')) {
 
-        //         var url = $el.attr('href');
-
-        //         var url_no_params = crsaRemoveUrlParameters(url);
-
-        //         url = crsaPage.makeAbsoluteUrl(url);
-
-        //         if(url_no_params.length) {
-        //             if(crsaIsFileUrl(url)) {
-        //                 if(crsaIsFileOrDir(crsaMakeFileFromUrl(url)) !== 'file') {
-        //                     pinegrow.showQuickMessage($el.attr('href') + ' not found!', 3000, false, 'error');
-        //                     return false;
-        //                 }
-        //             }
-        //             pinegrow.showQuickMessage('Opening ' + $el.attr('href') + '...');
-        //             pinegrow.openOrShowPage(url, null, true, true);
-        //             event.stopPropagation();
-        //             event.preventDefault();
-        //         } else {
-        //             if((url_no_params == '' || crsaRemoveUrlParameters(url) == crsaPage.url) && el.hash) {
-        //                 if(event.shiftKey) {
-        //                     //fake it
-        //                     var hash = el.hash;
-        //                     crsaPage.getWindow().location.hash = hash;
-        //                     return false;
-        //                 }
-        //             }
-        //             return true;
-        //         }
-
-        //     } else {
-        //         return true;
-        //     }
-        // }
-
-        if(!getType($el)) return true;
-
-        // sws: blocked
-        // if($el.attr('data-pg-allow-click')) {
-
-        //     if($el.get(0).href) {
-        //         var href = httpServer.getOriginalUrl($el.get(0).href);
-        //         pinegrow.openPage(href);
-        //         event.stopPropagation();
-        //         event.preventDefault();
-        //         return false;
-        //     }
-        // }
+            if($el.get(0).href) {
+                var href = httpServer.getOriginalUrl($el.get(0).href);
+                pinegrow.openPage(href);
+                event.stopPropagation();
+                event.preventDefault();
+                return false;
+            }
+        }
 
         var $has_body = $el.find('body');
         if($has_body.length) $el = $has_body;
@@ -4269,7 +4627,7 @@ var mainModule = function() {
     }
 
     function onElementMouseOver(event) {
-        if(preview) return true;
+        if(wfbuilder.is_preview()) return true;
         if(draggedPlaceholderElement) return;
         var el = event.target;
         var $el = $(el);
@@ -4282,7 +4640,7 @@ var mainModule = function() {
     }
 
     function onElementMouseOut(event) {
-        if(preview) return true;
+        if(wfbuilder.is_preview()) return true;
         if(draggedPlaceholderElement) return;
         var el = event.target;
         var $el = $(el);
@@ -4295,7 +4653,7 @@ var mainModule = function() {
     }
 
     function onElementMouseEnter(event) {
-        if(preview) return true;
+        if(wfbuilder.is_preview()) return true;
         if(draggedPlaceholderElement) return;
         var el = event.target;
         var $el = $(el);
@@ -4308,7 +4666,7 @@ var mainModule = function() {
     }
 
     function onElementMouseLeave(event) {
-        if(preview) return true;
+        if(wfbuilder.is_preview()) return true;
         if(draggedPlaceholderElement) return;
         var el = event.target;
         var $el = $(el);
@@ -4518,7 +4876,8 @@ var mainModule = function() {
 
         if(!preview) {
             pgel = pgCreateNodeFromHtml(code);
-            var page = service.getSelectedPage();
+
+            var page = service.getSelectedCrsaPage();
             if(page) {
                 service.httpServer.setCurrentRequestContext(page.url, page.sourceNode);
             }
@@ -4648,11 +5007,12 @@ var mainModule = function() {
                 if ($pel.has($body.get(0)).length > 0) $pel = $body;
 
                 //check if pel contains dragged element
+                console.log($pel);
                 while ($pel.length > 0 && draggedPlaceholderElement.has($pel.get(0)).length > 0 && !$pel.is('body')) {
                     $pel = $pel.parent();
                 }
+                console.log($pel);
                 if (draggedPlaceholderElement.has($pel.get(0)).length > 0) return;
-
                 var $over_el = $pel;
 
                 var $pel_inner;
@@ -4665,12 +5025,20 @@ var mainModule = function() {
                     do_over_child = true;
                 } else {
                     if (def.parent_selector) {
-                        $pel = $pel.closest(def.parent_selector);
-                        do_over_child = true;
+                        draggedOverInvalidParent_db = false;
+                        if (draggedPlaceholderElement.data("db-t_cID") && $pel.closest(def.parent_selector).length == 0) {
+                            var t_cID = draggedPlaceholderElement.data("db-t_cID");
+                            if (ab_h.t_c_list()[t_cID].attribAttributeType != "1") {
+                                draggedOverInvalidParent_db = true;
+                            }
+                        } else {
+                            $pel = $pel.closest(def.parent_selector);
+                            do_over_child = true;
+                        }
                     }
                 }
 
-                var skip = "img,iframe,script,embed,vide,audio,:hidden";
+                var skip = "img,iframe,script,embed,video,audio,:hidden";
 
                 var isInline = function ($e) {
                     return $e.css('display') == 'inline' && !$e.is('img');
@@ -4680,7 +5048,6 @@ var mainModule = function() {
                     $pel = $pel.parent();
                     do_over_child = true;
                 }
-
                 if (do_over_child) {
                     if ($pel.length > 0) {
                         $pel_inner = getInnerContainer($pel);
@@ -4902,9 +5269,10 @@ var mainModule = function() {
             function() {
                 //onchange
                 if(applySource(mirror.getDoc().getValue())) {
-                    // ignore_select_element = true;
-                    // wfbuilder.setNeedsUpdateDelayed($parent);
-                    // didMakeChange(selectedPage);
+                    
+                    ignore_select_element = true;
+                    wfbuilder.setNeedsUpdateDelayed($parent);
+                    didMakeChange(selectedPage);
                 }
                 return has_error;
             },
@@ -4961,10 +5329,12 @@ var mainModule = function() {
         var ignore_select_element = false;
 
         var applySource = function(s, force) {
+
+
             if(ignore_change) return false;
             s = $.trim(s);
 
-            change_happened = true;
+
             //debugger;
             try {
                 var pgNewEl = pgCreateNodeFromHtml(s);
@@ -5087,6 +5457,7 @@ var mainModule = function() {
         $body.on('crsa-page-changed', onPageChanged);
 
         var onElementSelected = function(e, element) {
+            
             if(element && element.user_action) {
                 setTimeout(function() {
                     if(!ignore_select_element && element && element.type == 'element') {
@@ -5176,6 +5547,7 @@ var mainModule = function() {
             }
         });
 
+      
         showAutoCompleteOnInput(mirror);
 
         setLightDarkClassForEditor($editor_el, service.getSetting('code-theme-cm', 'eclipse'));
@@ -5214,7 +5586,7 @@ var mainModule = function() {
         }, 100);
 
         mirror.on('change', function() {
-            has_errors = onChange();
+             has_errors = onChange();
             if(has_content) has_changes = true; //first change is initializing the content
             has_content = true;
         });
@@ -5320,7 +5692,8 @@ var mainModule = function() {
 
         return {mirror: mirror, dialog: $dialog, editor_el: $editor_el};
     }
-     window.showAutoCompleteOnInput = function(mirror) {
+
+    window.showAutoCompleteOnInput = function(mirror) {
         var debounce;
         mirror.on("inputRead", function(cm) {
             clearTimeout(debounce);
@@ -5329,7 +5702,6 @@ var mainModule = function() {
                     if(service.getSetting('code-autocomplete','1') == '1') {
                         var cursor = cm.getDoc().getCursor();
                         var mode = cm.getModeAt(cursor);
-
 
                         if(mode && mode.name == 'xml') {
                             var line = cm.getDoc().getLine(cursor.line);
@@ -5367,32 +5739,74 @@ var mainModule = function() {
             }, 500);
         };
     this.setNeedsUpdate = function(now, $el_to_update) {
-            var page = $el_to_update ? getIframeOfElement($el_to_update) : selectedPage;
+        var page = $el_to_update ? getIframeOfElement($el_to_update) : selectedPage;
 
-            if(page) {
-                needsUpdate = true;
-                needsUpdateElement = $el_to_update;
-                if(now) {
-                    if(updateTimer) {
-                        clearTimeout(updateTimer);
-                        updateTimer = null;
-                    }
-                    wfbuilder.updateStructureAndWireAllElemets(page, $el_to_update, true);
-                    if(selectedElement && selectedElement.type == 'element') {
-                        selectElement(selectedElement.data);
-                    }
+        if(page) {
+            needsUpdate = true;
+            needsUpdateElement = $el_to_update;
+            if(now) {
+                if(updateTimer) {
+                    clearTimeout(updateTimer);
+                    updateTimer = null;
+                }
+                wfbuilder.updateStructureAndWireAllElemets(page, $el_to_update, true);
+                if(selectedElement && selectedElement.type == 'element') {
+                    selectElement(selectedElement.data);
                 }
             }
-        };
+        }
+    };
 
-    this.editCode = function($iframe, codeOnlyPage) {
+    var editCodeFirst = false;
+
+    this.editCode = function($iframe, codeOnlyPage, selectedCssAndRule) {//sws//add
+                
+                /////////////////////////////////////////////
+                //sws//add
+
+                var ps = getCrsaPageStylesForPage(wfbuilder.getSelectedPage());
+
+                if(ps) {
+
+                    var allSheets = ps.getAllCrsaStylesheets();
+
+                    $.each(allSheets, function(i, cs) {
+
+                        var strPreviousCss_source = cs.css_source;
+                        cs.css_source = null;
+
+                        cs.genRegenerateAndSetCssSource(null, false); //dont regenerate crsa rules
+
+                        if (strPreviousCss_source != cs.css_source) {
+                            cs.changed = true
+                        }
+                        
+                    });      
+                }         
+                /////////////////////////////////////////////
+
             var editor = $.trim(service.getSetting('code-editor', ''));
+            
             if(!editor || true) {
+
+                if (selectedCssAndRule) {
+                    codeEditor.setSelectedCssAndRule(selectedCssAndRule);
+                }else{
+                    codeEditor.setSelectedCssAndRule(null);                    
+                }
+
+
+
+                
                 codeEditor.editCode($iframe, function() {
-                    on_change_timer = setTimeout(function() {
-                        wfbuilder.refresh_current_page();
-                    }, 200);
+                    if (editCodeFirst) {
+                        on_change_timer = setTimeout(function() {
+                            wfbuilder.refresh_current_page();
+                        }, 200);
+                        editCodeFirst = false;
+                    }
                 }, codeOnlyPage);
+
             } else {
                 var cp = getCrsaPageForIframe($iframe);
 
@@ -5876,11 +6290,36 @@ var mainModule = function() {
 
     function updateRulesList($fc, $el, values, fn) {
         var selectors;
+
+        //sws//add
+        if ($("div[id^='popover'].popover").length > 0) {
+            $("div[id^='popover'].popover").remove();
+        }
+
         if(customLogic.showOnlyClassesInProperties) {
             selectors = $.fn.crsacss('getClassesForElement', $el);
         } else {
             selectors = $.fn.crsacss('getRulesForElement', $el, true, true);
         }
+
+        //sws//add
+        var node = getElementPgNode($el);
+        var strClassListForNode = node.getClasses();
+        if (strClassListForNode) {
+
+            if (!Array.isArray(selectors)) {
+                selectors = [];
+            }
+
+            $.each(strClassListForNode, function(i, strClass){
+                if (selectors.indexOf("." + strClass) == -1) {
+                    selectors.push("." + strClass);
+                }
+            });
+            
+        }
+        selectors.sort();
+
         if(selectors) {
             var $ul = $('<ul/>', {class: 'clearfix'}).appendTo($fc);
             $.each(selectors, function(i,cls) {
@@ -5897,6 +6336,13 @@ var mainModule = function() {
                     var $ric = $('<li/>', { 'class' : 'crsa-input-rule' + (isClass ? ' class' : '')}).appendTo($ul).data('class', cls).html(cls);
                     //var $ri = $('<a/>', {'class' : 'crsa-input-rule', 'href' : '#'}).html(cls).appendTo($ric);
                     if(isClass) {
+                        //sws//add
+                        var $eye = $('<i/>', {'class' : 'fa fa-eye crsa-input-rule-enable'}).appendTo($ric);
+
+                        if ($el.hasClass(cls.replace(".", "")) == false) {
+                            $eye.removeClass("fa-eye").addClass("fa-eye-slash");  
+                        }
+                        
                         var $remove = $('<i/>', {'class' : 'fa fa-times crsa-input-rule-remove'}).appendTo($ric);
                     }
                 }
@@ -5906,6 +6352,7 @@ var mainModule = function() {
 
         $addc.find('a').on('click', function(e) {
             e.preventDefault();
+
             showAddClassBox($(e.delegateTarget));
         });
 
@@ -5921,6 +6368,29 @@ var mainModule = function() {
                 //showAddClassBox($(event.delegateTarget));
             });
         }
+
+        //sws//add
+        $fc.find('.crsa-input-rule-enable').on('click', function(event) {
+
+            var $ri = $(event.delegateTarget);
+            var $ric = $ri.parent();
+            var cls = $ric.data('class');
+
+            $('#crsa-rules').trigger('crsa-cm-class-enable', cls);
+            /*
+             var $el = selectedElement.data;
+             willMakeChange(selectedPage, getElementName($el) + " | Remove class " + cls)
+             $el.removeClass(cls.replace('.',''));
+             selectElement($el);
+             didMakeChange(selectedPage);
+             */
+            //var $el = selectedElement.data;
+            //selectElement($el);
+
+            event.preventDefault();
+            event.stopPropagation();
+        });
+
 
         $fc.find('.crsa-input-rule-remove').on('click', function(event) {
             var $ri = $(event.delegateTarget);
@@ -5963,11 +6433,15 @@ var mainModule = function() {
             var offset = $el.offset();
             var place = offset.left > $(window).width()/2 ? 'left' : 'right';
             var eid = getUniqueId();
+
             if($el.data('popover-active')) {
                 $el.popover('destroy');
                 $el.data('popover-active', null);
                 return;
             }
+
+
+
             var ensureRemove = function($e) {
                 setTimeout(function() {
                     $e.closest('.popover').remove();
@@ -6028,6 +6502,7 @@ var mainModule = function() {
                         e.preventDefault();
                         doAdd(e);
                     });
+
                     $b.on('click', function(e) {
                         e.preventDefault();
                         doAdd(e);
@@ -6054,8 +6529,8 @@ var mainModule = function() {
                     },10);
                 });
             $el.popover('show').data('popover-active', true);
-        }
 
+        }
 
     } 
 
@@ -6082,9 +6557,132 @@ var mainModule = function() {
         $("a[href = '#css_']").click();
         classManager.resizeRulesList();
     }
+
+
+      this.refreshPage = function(crsaPage) {
+            var sel_pgid = null;
+            if(selectedElement && selectedElement.type == 'element') {
+                sel_pgid = selectedElement.data.attr('data-pg-id');
+            }
+
+            var is_selected_page = crsaPage == service.getSelectedCrsaPage();
+
+            if(is_selected_page) {
+                selectElement(null);
+                highlightElement(null);
+            } else {
+                sel_pgid = null;
+            }
+
+            var st = $(crsaPage.getBody()).scrollTop();
+            //console.log('Scroll top = ' + st);
+
+            /*crsaPage.loadingStart(function() {
+             onLoadDone(crsaPage);
+             });*/
+            methods.reloadPage(crsaPage, function($iframe, crsaPage) {
+
+                //methods.updateStructureAndWireAllElemets(crsaPage.$iframe);
+
+                //sws:blocked:
+                var stop_check = false;
+
+                var onCheck = function() {
+                    if(stop_check && check_interval) {
+                        clearInterval(check_interval);
+                        //return;
+                    }
+                    if(sel_pgid) {
+                        var $el = crsaPage.getElementWithPgId(sel_pgid);
+                        if($el) {
+                            selectElement($el);
+                            sel_pgid = null;
+                        }
+                    }
+                    if(st > 0) {
+                        var cst = $(crsaPage.getBody()).scrollTop();
+                        if(st > 0 && Math.abs(cst - st) > st*0.1) {
+                            $(crsaPage.getBody()).scrollTop(st);
+                        } else {
+                            st = 0;
+                        }
+                    }
+
+                    crsaPage.addCrsaStyles();
+
+                    if(!sel_pgid && st == 0 && check_interval) {
+                        clearInterval(check_interval);
+                    }
+                }
+
+                $iframe.one('load', function() {
+
+                    if (crsaPage == service.getSelectedCrsaPage()) {
+                        wfbuilder.updateStructureAndWireAllElemets(crsaPage.$iframe);
+                    } else {
+                        crsaPage.treeRepaintOnShow = crsaPage.get$Html();
+                    }
+
+                    $.fn.crsacss('loadLessStyles', $iframe.get(0), function() {
+                        onLoadDone(crsaPage);
+                        //crsaPage.loadingDone();
+                        onCheck();
+                    }, crsaPage.wrapper_url ? true : false /* inc dynamic */);
+                    stop_check = true;
+                });
+                self.addScrollHandlerToFrame($iframe);
+
+                var check_interval = setInterval(onCheck, 200);
+
+            }, null, true);
+        }
+
+   
+       function onElementDoubleClick(event) {
+        if(wfbuilder.is_preview()) return true;
+        var el = event.target;
+        var $el = $(el);
+        if(!getType($el)) return true;
+        var crsaPage = getCrsaPageOfElement($el);
+
+        var pgel = getElementPgNode($el);
+        if(pgel.tagName == 'img') {
+            if(canMakeChange(pgel, 'attr', 'src')) {
+                PgChooseFile(function (url, file) {
+                    if (url) {
+                        pinegrow.makeChanges(crsaPage, $el, 'Set image', function () {
+                            $el.attr('src', url);
+                            pgel.setAttr('src', pinegrow.getOriginalUrl(url));
+                            pinegrow.reselectElement($el);
+                        })
+                    }
+                }, {
+                    parent_url: crsaGetObjectParentUrl(getObjectFromElement($el)),
+                    save_as: null,
+                    folder: null,
+                    no_proxy: null,
+                    no_url: null
+                });
+            }
+        } else {
+            editor.setSelectedPage(crsaPage.$iframe);
+            var r = editor.startEdit($('.crsa-edit-toolbar'), $el, true /* double click */);
+            if (r == 'code') {
+                editElementSource($el);
+            }
+        }
+        event.preventDefault();
+        event.stopPropagation();
+    } 
 }
 
 var wfbuilder = new mainModule();
+ 
+
+ window.scrollCanvasToPage = function($iframe) {
+        wfbuilder.scrollCanvasToElement(null, $iframe);
+    }
+
 
 function shortenString(str, maxlen, add) {
     if(typeof add == 'undefined') add = '...';
@@ -6178,57 +6776,6 @@ function getValueFromInputField(val, def, obj, options) {
 function getObjectName(obj, def, html, cls, get_text, show_tag) {
     if(obj.type == 'element') return getElementName(obj.data, def, html, cls, get_text, show_tag);
     if(obj.type == 'rule') return getRuleName(obj.data);
-}
-
-
-
-
-window.crsaQuickMessage = function(msg, duration, single, error) {
-    if(!duration) duration = 1500;
-    var top = 100;
-    var count = 0;
-
-    var quick_messages = $('.quick-message');
-
-    quick_messages.each(function(i,q) {
-        var $q = $(q);
-        var t = parseInt($q.css('top'));
-        if(top <= t) top = t + $q.outerHeight() + 0;
-        count++;
-    });
-
-    if(single && quick_messages.length > 0) return;
-
-    var spinner = '';
-    if(duration < 0) {
-        spinner = '<i class="fa fa-refresh fa-spin"></i>&nbsp;';
-    }
-
-    var $return = null;
-
-    (function() {
-        var $msg = $('<div/>', {class: 'quick-message' + (error ? ' quick-message-error' : '')}).html('<p>' + spinner + msg + '</p>').appendTo($('body')).css('opacity', 0).css('top', top + 'px');
-        $msg.animate({opacity:1}, error ? 100 : 250);
-
-        $msg.removeMessage = function() {
-
-            $msg.animate({opacity:0}, 500, function() {
-                $msg.remove();
-            });
-
-            setTimeout(function () {
-                $msg.remove();
-            }, 1000);
-        }
-        if(duration > 0) {
-            setTimeout(function () {
-                $msg.removeMessage();
-            }, duration);
-        }
-        $return = $msg;
-    })();
-
-    return $return;
 }
 
 function crsaGetObjectParentUrl(obj) {
@@ -6499,8 +7046,6 @@ var CrsaLocalStorage = function() {
             localStorage.crsaInternal = str;
         }, 100);
     }
-
-
 
     this.setValue = function(key, val) {
         if(isApp()) {

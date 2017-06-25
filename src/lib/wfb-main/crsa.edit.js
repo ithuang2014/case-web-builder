@@ -513,6 +513,7 @@ var CrsaCodeEdit = function() {
     var $textEdit = $('#textedit');
     var $bar = $('#textedit_bar');
     var $select = $bar.find('select.edit-css-select');
+    var $html = $bar.find('a.edit-html');
     // var $scss_input = $bar.find('input.edit-scss-input');
 
     var $live_refresh = $bar.find('.live-update');
@@ -701,6 +702,128 @@ var CrsaCodeEdit = function() {
         if(mirror) mirror.refresh();
     }
 
+    /////////////////////////////////////////////////
+    //sws//add
+    this.selectRuleInCodeMirror = function() {
+        
+
+      var rule = _this.selectedCssAndRule.rule; 
+      var doc = mirror.getDoc();
+
+      var iFistLineOfDoc = doc.first;
+      var iLastLineOfDoc = doc.first + doc.size - 1;
+      
+      var iFistLineOfRule = -1;
+      var iLastLineOfRule = -1;
+
+      var iFirstCharOfFistLineOfRule = -1;
+      var iLastCharOfLastLineOfRule  = -1;
+
+      var strLine = "";
+      var strMultiLine = "";
+      var strMultiLineBeforeRule = "";
+
+      var iSpaceCountOfStart = 0;
+      var strRule = "";
+      var iIndexOfRule = -1;
+
+      //sws//process for media
+      if (rule.media) {
+
+          strRule = rule.crsa_stylesheet.getLessSourceForRulesWithoutMedia([rule]);
+          strRule = strRule.split('\n').map(function(currentValue,index,arr){return currentValue.trim();}).join('');
+      
+      }else{
+
+          strRule = rule.crsa_stylesheet.genGetSourceForRules([rule]);
+          strRule = strRule.split('\n').map(function(currentValue,index,arr){return currentValue.trim();}).join('');
+      }
+
+      for (var i = iFistLineOfDoc; i < iLastLineOfDoc; i++) {
+          
+          strLine = doc.getLine(i);
+
+          if(strLine && strLine.length) {
+              strMultiLine = strMultiLine + strLine.trim();
+          } 
+      }
+
+      //sws//check whether a rule is in the MultiLine or not
+      iIndexOfRule = strMultiLine.indexOf(strRule);
+      if (iIndexOfRule == -1) {
+        return;//sws//no found
+      }
+
+      strMultiLineBeforeRule = strMultiLine.slice(0, iIndexOfRule + 1);
+
+      strMultiLine = "";
+      for (var i = iFistLineOfDoc; i <= iLastLineOfDoc; i++) {
+          
+          strLine = doc.getLine(i);
+
+          //sws//Get SpaceCount 
+          iSpaceCountOfStart = 0;
+          for (var j = 0 ; j <= strLine.length - 1; j++) {
+            
+            if (strLine.charAt(j) == ' ') {
+                iSpaceCountOfStart = j + 1;
+            } else {
+                break;
+            }
+          }
+
+          if(strLine && strLine.length) {
+
+              strMultiLine = strMultiLine + strLine.trim();
+              
+              //sws//Search the first line of rule
+              if (iFistLineOfRule == -1 ) {
+
+                  if (strMultiLine.includes(strMultiLineBeforeRule)) {
+                    
+                    iFistLineOfRule = i;
+
+                    iFirstCharOfFistLineOfRule = strLine.trim().length - (strMultiLine.length - strMultiLineBeforeRule.length) - 1 + iSpaceCountOfStart;
+
+                  } 
+              }
+
+              //sws//Search the last line of rule
+              if (iFistLineOfRule != -1 && iLastLineOfRule == -1) {
+                 
+                  if (strMultiLine.includes(strRule)) {
+                    
+                    iLastLineOfRule = i;
+
+                    iLastCharOfLastLineOfRule = strLine.trim().length - (strMultiLine.length - strMultiLineBeforeRule.length - 1 - strRule.length) + iSpaceCountOfStart;
+
+                    break;
+                  } 
+              }
+          } 
+      }
+
+
+      //sws//selection
+      if (iFistLineOfRule != -1 && iLastLineOfRule != -1 &&
+          iFirstCharOfFistLineOfRule != -1 && iLastCharOfLastLineOfRule != -1) {
+
+          doc.setSelection(
+            {line: iFistLineOfRule, ch: iFirstCharOfFistLineOfRule},
+            {line: iLastLineOfRule, ch: iLastCharOfLastLineOfRule},
+            {scroll: true}); 
+
+      }
+     
+      scroll_to_selection = true;
+ 
+    }
+    /////////////////////////////////////////////////
+
+
+
+
+
     this.selectElementInCodeMirror = function($el, mirror, id_to_markers) {
         var pgel = getElementPgNode($el);
         if(pgel) {
@@ -743,7 +866,7 @@ var CrsaCodeEdit = function() {
                     }*/
 
 //                    mirror.setCursor({line: start_line, ch: start_ch});
-
+                    debugger;//sws//
                     doc.setSelection(
                         {line: start_line, ch: start_ch},
                         {line: pos.from.line + source_lines.length - 1, ch: source_lines[source_lines.length-1].length + (source_lines.length == 1 ? start_ch : start_ch)},
@@ -771,6 +894,7 @@ var CrsaCodeEdit = function() {
     }
 
     $('body').on('crsa-element-selected', function(e, element) {
+
         if(!_this.currentPage) return;
         //if(!isLiveRefresh()) return;
 
@@ -1017,7 +1141,7 @@ var CrsaCodeEdit = function() {
     }
 
     var getScssStylesheets = function () {
-        return service.getSelectedPage().scss_list;
+        return service.getSelectedCrsaPage().scss_list;
     }
 
     var showSelectedCss = function() {
@@ -1050,7 +1174,7 @@ var CrsaCodeEdit = function() {
 
     var getFilePathWithoutExtFromScssInput = function () {
         var fileName = getFileNameWithoutExtFromScssInput();
-        var styleFilePath = path.join(path.dirname(service.getSelectedPage().localFile), fileName);
+        var styleFilePath = path.join(path.dirname(service.getSelectedCrsaPage().localFile), fileName);
         return styleFilePath;
     }
 
@@ -1325,6 +1449,7 @@ var CrsaCodeEdit = function() {
     }
 
     $bar.find('a, button').on('click', function(event) {
+        
         onBarClick(event);
     });
 
@@ -1390,13 +1515,19 @@ var CrsaCodeEdit = function() {
     var edit_win = null;
     var edit_win_manager = null;
 
+    //sws//add
+    this.selectedCssAndRule = null;
+    this.setSelectedCssAndRule = function(selectedCssAndRule) {
+        this.selectedCssAndRule = selectedCssAndRule;  
+    }
+
 
     this.showInExternalWindow = false;
 
     this.editCode = function($iframe, done, codePage) {
 
       /*
-        var page = service.getSelectedPage();
+        var page = service.getSelectedCrsaPage();
         codeEditors.open(page.url, page.getCode(), function(editor_id) {
 
         })
@@ -1415,24 +1546,41 @@ var CrsaCodeEdit = function() {
           
             // service.stats.using('edit.pagecodewin');*/
 
+
+
             if(edit_win) {
-                this.showEditor($iframe, edit_win, codePage);
+                //sws//temp  this.showEditor($iframe, edit_win, codePage);
                 edit_win.show();
                 edit_win.focus();
                 if(done) done();
+
+
+                //sws//add
+                if (_this.selectedCssAndRule) {
+
+                    $select.val(_this.selectedCssAndRule.css).click();
+
+                    if (code_mode == 'css') {
+                      _this.selectRuleInCodeMirror();
+                    }
+                }else{
+
+                    $html.click();
+                }
+
             } else {
                 var gui = require('nw.gui');
-                
-                   
-               var EditWIn  =   window.open('empty.html', {
+
+                var EditWIn  =  window.open('empty.html', {
                                             focus: true,
                                             show:true,
                                             toolbar: true,
                                             title: 'Web Form Builder - Edit code'
                                             });
                     
-                    edit_win = gui.Window.get(EditWIn);
-                    console.log(edit_win);
+                edit_win = gui.Window.get(EditWIn);
+                console.log(edit_win);
+
                 edit_win_manager = new pgWindowManager(edit_win, 'editCode', function(win) {
                 })
 
@@ -1458,15 +1606,37 @@ var CrsaCodeEdit = function() {
                         return wfbuilder.processKeydownEvent (e);
                     });
                     if(done) done();
+
+
+
+                  //sws//add
+                  if (_this.selectedCssAndRule) {
+
+                      $select.val(_this.selectedCssAndRule.css).click();
+
+                      if (code_mode == 'css') {
+                        _this.selectRuleInCodeMirror();
+                      }
+                  }else{
+                      
+                      $html.click();
+                  }
+
+                    
                 });
 
                 var main = gui.Window.get();
-                main.on('focus', function() {
-                    if(edit_win) edit_win.setAlwaysOnTop(true);
-                })
-                main.on('blur', function() {
-                    if(edit_win) edit_win.setAlwaysOnTop(false);
-                })
+
+                //sws//add
+                edit_win.setAlwaysOnTop(true);
+
+                //sws//temp
+                // main.on('focus', function() {
+                //     if(edit_win) edit_win.setAlwaysOnTop(true);
+                // })
+                // main.on('blur', function() {
+                //     if(edit_win) edit_win.setAlwaysOnTop(false);
+                // })
 
 
             }
@@ -1499,6 +1669,7 @@ var CrsaCodeEdit = function() {
     })
 
     this.showEditor = function($iframe, win, codePage) {
+      debugger;
         // service.stats.using('edit.pagecode');
 /*
         if((this.currentPage && !this.isInEdit($iframe))) {
@@ -1946,7 +2117,7 @@ var CrsaEditor = function() {
         html = html.replace(/\sdata\-pg\-tree\-id="[0-9]+"/g, '');
         var pgel = getElementPgNode(currentElement);
 
-        var cp = service.getSelectedPage();
+        var cp = service.getSelectedCrsaPage();
         if(cp.sourceNode != pgel.document) {
             console.log('INTERNAL PROBLEM', pgel, cp.sourceNode);
         }
@@ -2035,7 +2206,7 @@ var CrsaEditor = function() {
             //     $new_selected_element = $body;
             // }
             $body.html(cp.getViewInnerHTMLForElement(pgbody, true /* disable js */));
-            service.updateTree($body);
+            // service.updateTree($body);
         }
 
         in_edit = true;
