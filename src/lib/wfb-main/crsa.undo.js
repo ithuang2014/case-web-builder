@@ -117,6 +117,7 @@ var CrsaPageUndoStack = function(page) {
     });
 
     this.undo = function(done) {
+        debugger;
         var x = last == 'undo' ? 0 : 1;
         if(pointer() < 0 + x) {
             if(done) done(null);
@@ -136,6 +137,7 @@ var CrsaPageUndoStack = function(page) {
     });
 
     this.redo = function(done) {
+        debugger;
         var x = last == 'undo' ? 2 : 1;
         if(pointer() + x >= stack().length) {
             if(done) done(null);

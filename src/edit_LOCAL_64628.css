@@ -1739,6 +1739,7 @@ div.crsa-field.crsa-field-checkbox input.crsa-input {
 }
 .crsa-panel .grid-control label {
     width: 60px;
+<<<<<<< .mine
 }
 
 h3 span.cs-type {
@@ -1751,6 +1752,8 @@ h3 span.cs-type {
   position: relative;
   top: -1px;
   vertical-align: middle;
+||||||| .r415
+=======
 }
 h3 span.cs-type {
   background-color: #428bca;
@@ -1762,6 +1765,7 @@ h3 span.cs-type {
   position: relative;
   top: -1px;
   vertical-align: middle;
+>>>>>>> .r448
 }
 .canvas-resizer {
   position: absolute;

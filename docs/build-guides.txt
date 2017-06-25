@@ -1,0 +1,25 @@
+/////////////////////////////////
+     NW.js app build guide
+/////////////////////////////////
+
+So easy to build app, you just follow the steps below.
+
+1. First of all, get prepared nwjs sdk-v0.20.3
+   Should be downloaded on
+	https://dl.nwjs.io/v0.20.3/nwjs-sdk-v0.20.3-win-ia32.zip
+
+2. On Windows and Linux, you can put the files of your app in the same folder of NW.js binaries and then ship them to your users.
+Make sure  nw(or 'nw.exe') is in the same folder as 'package.json'.
+Or you can put the files of your app in a folder named  'package.nw'  in the same folder as  nw(or 'nw.exe').
+
+3. Package source files.
+You can package all the files into a zip file and rename it as 'package.nw'. And put it along with NW.js binaries for Windows and Linux. For Mac, put  package.nw  in 'nwjs.app/Contents/Resources/'.
+
+4. Append source to binary
+On Windows and Linux, you can even hide the zip file by appending the zip file to the end of nw or 'nw.exe'.
+You can run following command on Windows to achieve this:
+	copy /b nw.exe+package.nw app.exe
+or following command on Linux:
+	cat nw app.nw > app && chmod +x app
+
+Enjoy it.
